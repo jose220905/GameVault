@@ -1,0 +1,153 @@
+// prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Rol {
+  ADMINISTRADOR
+  EMPLEADO
+}
+
+enum EstadoPreventa {
+  PENDIENTE
+  LIQUIDADA
+  COMPLETADA
+  CANCELADA
+}
+
+
+model Categoria {
+  id              Int        @id @default(autoincrement()) @map("id_categoria")
+  nombreCategoria String     @map("nombre_categoria")
+  productos       Producto[]
+
+  @@map("categorias")
+}
+
+model Producto {
+  id            Int            @id @default(autoincrement()) @map("id_producto")
+  codigo        String         @unique
+  idCategoria   Int            @map("id_categoria")
+  nombre        String
+  precio        Decimal        @db.Decimal(10, 2)
+  stock         Int
+  esDigital     Boolean        @default(false) @map("es_digital")
+  activo        Boolean        @default(true)
+  categoria     Categoria      @relation(fields: [idCategoria], references: [id])
+  detallesVenta DetalleVenta[]
+  preventas     Preventa[]
+
+  @@map("productos")
+}
+
+
+model Cliente {
+  id        Int        @id @default(autoincrement()) @map("id_cliente")
+  nombre    String
+  telefono  String
+  preventas Preventa[]
+  ventas    Venta[]
+
+  @@map("clientes")
+}
+
+model Usuario {
+  id             Int                 @id @default(autoincrement()) @map("id_usuario")
+  nombreCompleto String              @map("nombre_completo")
+  username       String              @unique
+  password       String
+  rol            Rol
+  ventas         Venta[]
+  cierresCaja    CierreCaja[]
+  bitacoras      BitacoraAuditoria[]
+
+  @@map("usuarios")
+}
+
+model Preventa {
+  id            Int            @id @default(autoincrement()) @map("id_preventa")
+  idCliente     Int            @map("id_cliente")
+  idProducto    Int            @map("id_producto")
+  idVenta       Int?           @map("id_venta")
+  montoAnticipo Decimal        @map("monto_anticipo") @db.Decimal(10, 2)
+  formaPago     String         @default("EFECTIVO") @map("forma_pago")
+  metodoPago    String?        @default("EFECTIVO") @map("metodo_pago")
+  fechaReserva  DateTime       @default(now()) @map("fecha_reserva")
+  fechaEntrega  DateTime?      @map("fecha_entrega")
+  estado        EstadoPreventa @default(PENDIENTE)
+  cliente       Cliente        @relation(fields: [idCliente], references: [id])
+  producto      Producto       @relation(fields: [idProducto], references: [id])
+  venta         Venta?         @relation(fields: [idVenta], references: [id])
+
+  @@map("preventas")
+}
+
+model Venta {
+  id         Int            @id @default(autoincrement()) @map("id_venta")
+  idUsuario  Int            @map("id_usuario")
+  idCliente  Int?           @map("id_cliente")
+  subtotal   Decimal        @default(0) @map("subtotal") @db.Decimal(10, 2)
+  descuento  Decimal        @default(0) @map("descuento") @db.Decimal(10, 2)
+  iva        Decimal        @default(0) @map("iva") @db.Decimal(10, 2)
+  montoTotal Decimal        @map("monto_total") @db.Decimal(10, 2)
+  formaPago  String         @default("EFECTIVO") @map("forma_pago")
+  metodoPago String?        @default("EFECTIVO") @map("metodo_pago")
+  fecha      DateTime       @default(now())
+  usuario    Usuario        @relation(fields: [idUsuario], references: [id])
+  cliente    Cliente?       @relation(fields: [idCliente], references: [id])
+  detalles   DetalleVenta[]
+  preventas  Preventa[]
+
+  @@map("ventas")
+}
+
+model DetalleVenta {
+  id             Int          @id @default(autoincrement()) @map("id_detalle")
+  idVenta        Int          @map("id_venta")
+  idProducto     Int          @map("id_producto")
+  cantidad       Int
+  precioUnitario Decimal      @map("precio_unitario") @db.Decimal(10, 2)
+  venta          Venta        @relation(fields: [idVenta], references: [id])
+  producto       Producto     @relation(fields: [idProducto], references: [id])
+  devoluciones   Devolucion[]
+
+  @@map("detalle_venta")
+}
+
+model Devolucion {
+  id           Int          @id @default(autoincrement()) @map("id_devolucion")
+  idDetalle    Int          @map("id_detalle")
+  motivo       String
+  detalleVenta DetalleVenta @relation(fields: [idDetalle], references: [id])
+
+  @@map("devoluciones")
+}
+
+model CierreCaja {
+  id                 Int      @id @default(autoincrement()) @map("id_cierre")
+  idUsuario          Int      @map("id_usuario")
+  totalEfectivo      Decimal  @default(0) @map("total_efectivo") @db.Decimal(10, 2)
+  totalTarjeta       Decimal  @default(0) @map("total_tarjeta") @db.Decimal(10, 2)
+  totalTransferencia Decimal  @default(0) @map("total_transferencia") @db.Decimal(10, 2)
+  diferencia         Decimal  @db.Decimal(10, 2)
+  fecha              DateTime @default(now())
+  usuario            Usuario  @relation(fields: [idUsuario], references: [id])
+
+  @@map("cierres_caja")
+}
+
+model BitacoraAuditoria {
+  id        Int      @id @default(autoincrement()) @map("id_bitacora")
+  idUsuario Int      @map("id_usuario")
+  accion    String
+  fecha     DateTime @default(now())
+  usuario   Usuario  @relation(fields: [idUsuario], references: [id])
+
+  @@map("bitacora_auditoria")
+}

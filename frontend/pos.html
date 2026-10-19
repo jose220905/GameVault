@@ -1,0 +1,1308 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameVault POS - Punto de Venta & Caja</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%2306b6d4%22 stroke-width=%222%22><rect x=%222%22 y=%226%22 width=%2220%22 height=%2212%22 rx=%226%22/><path d=%22M6 12h4m-2-2v4m10-2h.01m-3-2h.01%22/></svg>">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            vault: {
+              950: '#060911',
+              900: '#0b1120',
+              850: '#0f172a',
+              800: '#1e293b',
+              accent: '#6366f1',
+              cyan: '#06b6d4',
+              neon: '#10b981',
+              purple: '#8b5cf6',
+              pink: '#ec4899',
+            }
+          },
+          fontFamily: {
+            gamer: ['Rajdhani', 'sans-serif'],
+            display: ['Orbitron', 'sans-serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts & Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#060911] text-slate-100 min-h-screen cyber-grid flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+  <!-- TOP BAR: Navigation & Cashier -->
+  <header class="w-full border-b border-slate-800/80 bg-[#070b16]/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-[1750px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <a href="index.html" class="flex items-center gap-3 shrink-0 group" title="Volver al Login de GameVault">
+        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 group-hover:border-cyan-500 transition-colors">
+          <svg class="w-6 h-6 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="2" y="6" width="20" height="12" rx="6" />
+            <path d="M6 12h4m-2-2v4m10-2h.01m-3-2h.01" stroke-linecap="round" stroke-linejoin="round" />
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-display font-bold tracking-wider text-xl text-white">
+              GAME<span class="text-cyan-400">VAULT</span>
+            </span>
+            <span class="text-[10px] font-mono font-semibold px-1.5 py-0.5 rounded bg-slate-800 border border-slate-700 text-cyan-400">
+              v1.0
+            </span>
+          </div>
+          <p class="text-[10px] font-mono tracking-widest text-slate-400 uppercase">
+            TERMINAL DE VENTA & COBRO
+          </p>
+        </div>
+      </a>
+
+      <!-- Center: Barcode Scanner / Live Search -->
+      <div class="flex-1 max-w-xl mx-auto">
+        <div class="relative">
+          <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+            <svg class="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+          </div>
+          <input 
+            type="text" 
+            id="scanner-input" 
+            placeholder="Buscar por nombre, SKU o presione Enter para escanear..."
+            class="vault-input w-full pl-10 pr-24 py-2 rounded-xl text-sm text-slate-100 placeholder-slate-500 outline-none border border-slate-700/80 focus:border-cyan-400"
+          >
+          <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <span class="text-[10px] font-mono text-cyan-300 bg-slate-800/90 px-2 py-0.5 rounded border border-slate-700 flex items-center gap-1.5 shadow-sm">
+              <span>SCAN</span>
+              <svg class="w-3.5 h-3.5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 5v14M8 5v14M12 5v14M17 5v14M21 5v14"/>
+              </svg>
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Nav actions -->
+      <div class="flex items-center gap-2.5">
+        
+        <!-- ============================================== -->
+        <!-- ADMIN ONLY: MENÚ DESPLEGABLE 'HERRAMIENTAS' -->
+        <!-- ============================================== -->
+        <div id="admin-tools-container" class="relative hidden">
+          <button 
+            type="button" 
+            id="btn-admin-tools"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-950/70 border border-purple-500/40 hover:border-purple-400 text-purple-200 hover:text-white text-xs font-mono font-bold transition-all shadow-sm cursor-pointer"
+            title="Herramientas de Administración"
+          >
+            <i class="fa-solid fa-gear text-purple-400 text-xs"></i>
+            <span>Herramientas</span>
+            <svg class="w-3.5 h-3.5 text-purple-400 transition-transform duration-200" id="admin-tools-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="m6 9 6 6 6-6"/>
+            </svg>
+          </button>
+          
+          <!-- Dropdown Options -->
+          <div 
+            id="admin-tools-menu" 
+            class="absolute right-0 mt-2 w-56 rounded-xl bg-[#0b1120] border border-slate-700/80 shadow-2xl p-1.5 hidden z-50 backdrop-blur-xl space-y-1 font-mono text-xs"
+          >
+            <!-- 1. Inventario (Redirige a inventario.html) -->
+            <a 
+              href="inventario.html" 
+              class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors"
+            >
+              <i class="fa-solid fa-box text-cyan-400 text-sm w-5 text-center"></i>
+              <div class="leading-tight">
+                <span class="font-bold text-slate-100">Inventario</span>
+                <p class="text-[10px] text-slate-400">Control de stock & catálogo</p>
+              </div>
+            </a>
+
+            <!-- 2. Preventas y Reservas (Abre modal de preventas) -->
+            <button 
+              type="button" 
+              id="btn-menu-preventas"
+              class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer text-left"
+            >
+              <i class="fa-solid fa-tag text-indigo-400 text-sm w-5 text-center"></i>
+              <div class="leading-tight">
+                <span class="font-bold text-slate-100">Preventas y Reservas</span>
+                <p class="text-[10px] text-slate-400">Apartados & pre-órdenes</p>
+              </div>
+            </button>
+
+            <!-- 3. Corte de Caja (Abre modal de arqueo) -->
+            <button 
+              type="button" 
+              id="btn-menu-corte-caja"
+              class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer text-left"
+            >
+              <i class="fa-solid fa-money-bill-wave text-emerald-400 text-sm w-5 text-center"></i>
+              <div class="leading-tight">
+                <span class="font-bold text-slate-100">Corte de Caja</span>
+                <p class="text-[10px] text-slate-400">Arqueo y balance del turno</p>
+              </div>
+            </button>
+
+            <!-- 4. Clientes (Abre modal de clientes) -->
+            <button 
+              type="button" 
+              id="btn-menu-clientes"
+              class="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-slate-300 hover:text-white hover:bg-slate-800 transition-colors cursor-pointer text-left"
+            >
+              <i class="fa-solid fa-users text-amber-400 text-sm w-5 text-center"></i>
+              <div class="leading-tight">
+                <span class="font-bold text-slate-100">Clientes</span>
+                <p class="text-[10px] text-slate-400">Gestión de cartera retail</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- ======================================================== -->
+        <!-- EMPLEADO / CAJERO: BOTONES DIRECTOS 'PREVENTAS' & 'CLIENTES' -->
+        <!-- ======================================================== -->
+        <div id="employee-tools-container" class="hidden items-center gap-2">
+          <button 
+            type="button" 
+            id="btn-employee-preventas"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-mono font-bold transition-all shadow-sm cursor-pointer"
+            title="Gestión de Preventas y Reservas"
+          >
+            <i class="fa-solid fa-tag text-cyan-400 text-xs"></i>
+            <span>Preventas</span>
+          </button>
+          <button 
+            type="button" 
+            id="btn-employee-clientes"
+            class="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-mono font-bold transition-all shadow-sm cursor-pointer"
+            title="Gestión y Registro de Clientes"
+          >
+            <i class="fa-solid fa-users text-cyan-400 text-xs"></i>
+            <span>Clientes</span>
+          </button>
+        </div>
+
+        <!-- Cashier User Badge (Loaded dynamically from login) -->
+        <div id="cashier-container" class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-xs shadow-md">
+          <div class="text-left leading-tight">
+            <p id="pos-cashier-name" class="font-bold text-slate-200">Diego Rodriguez</p>
+            <span id="pos-cashier-role" class="text-[10px] font-mono text-cyan-300 font-semibold">EMPLEADO</span>
+          </div>
+        </div>
+
+        <!-- Exit / Logout -->
+        <a 
+          href="index.html" 
+          id="btn-logout"
+          class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 transition-colors"
+          title="Cerrar Sesión / Salir al Login"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </a>
+      </div>
+
+    </div>
+  </header>
+
+  <!-- MAIN POS WORKSPACE: 2 Columns -->
+  <!-- Left Side (7 Cols): Available Items / Catalog -->
+  <!-- Right Side (5 Cols): Checkout, Added Items Cart & Payment -->
+  <main class="flex-1 max-w-[1750px] w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-0 items-start">
+    
+    <!-- ======================================================== -->
+    <!-- LEFT SIDE: CATÁLOGO DE ARTÍCULOS DISPONIBLES EN TIENDA    -->
+    <!-- ======================================================== -->
+    <div class="lg:col-span-7 xl:col-span-7 flex flex-col gap-4 lg:pr-6 pb-6 lg:pb-0 border-b lg:border-b-0 lg:border-r border-slate-800/80">
+      
+      <!-- Category Filter Pills Bar (Etiquetas con estilo más cuadrado: rounded-md) -->
+      <div class="flex items-center gap-2 overflow-x-auto pb-1 select-none" id="category-pills">
+        <button class="cat-filter-btn active px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-cyan-500/60 bg-cyan-950/60 text-cyan-300 shadow-[0_0_12px_rgba(6,182,212,0.3)] transition-all cursor-pointer" data-category="all">
+          Todos los Artículos
+        </button>
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all cursor-pointer" data-category="consoles">
+          Consolas
+        </button>
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all cursor-pointer" data-category="games">
+          Videojuegos
+        </button>
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all cursor-pointer" data-category="accessories">
+          Accesorios
+        </button>
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all cursor-pointer" data-category="merch">
+          Coleccionables
+        </button>
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-purple-400 hover:text-purple-200 hover:border-purple-500/50 transition-all cursor-pointer" data-category="preventa">
+          Preventas
+        </button>
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-emerald-400 hover:text-emerald-200 hover:border-emerald-500/50 transition-all cursor-pointer" data-category="pines">
+          Pines Digitales
+        </button>
+      </div>
+
+      <!-- Item Counter Label ubicado justo debajo de las etiquetas de categorías -->
+      <div class="flex items-center justify-between px-1 -mt-1">
+        <span id="catalog-count-badge" class="text-xs font-mono text-slate-400">
+          Mostrando: 12 artículos
+        </span>
+      </div>
+
+      <!-- Catalog Products Grid -->
+      <div id="catalog-grid" class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3.5 max-h-[750px] overflow-y-auto pr-1">
+        <!-- Injected dynamically by js/pos.js -->
+      </div>
+
+      <!-- No items found notice -->
+      <div id="catalog-empty-notice" class="hidden flex-col items-center justify-center p-12 text-center glass-panel rounded-2xl border border-slate-800">
+        <div class="w-12 h-12 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 mb-3 mx-auto">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="m21 21-4.3-4.3"/>
+          </svg>
+        </div>
+        <h4 class="font-bold text-slate-300 text-sm">No se encontraron artículos</h4>
+        <p class="text-xs text-slate-500 mt-1">Prueba con otro término de búsqueda o categoría.</p>
+      </div>
+
+    </div>
+
+    <!-- ======================================================== -->
+    <!-- RIGHT SIDE: RESUMEN DE CAJA Y CARRITO DE VENTA           -->
+    <!-- Separado por la línea vertical divisoria (border-slate-800/80) -->
+    <!-- ======================================================== -->
+    <div class="lg:col-span-5 xl:col-span-5 sticky top-20 flex flex-col gap-4 lg:pl-6 pt-6 lg:pt-0">
+      
+      <!-- Checkout Box Container: Fondo eliminado (bg-transparent) -->
+      <div class="bg-transparent rounded-2xl p-5 sm:p-6 relative space-y-5 border border-slate-800/80">
+        
+        <!-- Header with Dynamic Ticket Counter -->
+        <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+          <div>
+            <h3 class="font-display font-bold text-base sm:text-lg text-white tracking-wide">
+              RESUMEN DE CAJA
+            </h3>
+          </div>
+          
+          <!-- Dynamic Ticket Number Badge (Fondo eliminado: bg-transparent) -->
+          <div class="text-right">
+            <span id="ticket-number-badge" class="text-xs font-mono font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-2.5 py-1 rounded-full">
+              TICKET #GV-0042
+            </span>
+          </div>
+        </div>
+
+        <!-- CLIENTE ASIGNADO A LA VENTA (Módulo de Clientes) -->
+        <div class="p-3 rounded-xl bg-slate-900/60 border border-slate-800 flex items-center justify-between gap-3 text-xs font-mono">
+          <div class="flex items-center gap-2.5 overflow-hidden">
+            <div class="w-8 h-8 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 shrink-0">
+              <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+              </svg>
+            </div>
+            <div class="overflow-hidden">
+              <div class="flex items-center gap-2">
+                <span id="pos-client-name" class="font-bold text-slate-200 truncate">Público General</span>
+                <span id="pos-client-discount-badge" class="hidden text-[10px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300">
+                  5% OFF
+                </span>
+              </div>
+              <p id="pos-client-phone" class="text-[10px] text-slate-400 truncate">Venta Mostrador Estándar</p>
+            </div>
+          </div>
+
+          <div class="flex items-center gap-1.5 shrink-0">
+            <button 
+              type="button" 
+              id="btn-open-client-modal"
+              class="px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold bg-cyan-950/60 hover:bg-cyan-900/80 border border-cyan-500/40 hover:border-cyan-400 text-cyan-300 hover:text-white transition-all shadow-sm flex items-center gap-1 cursor-pointer"
+              title="Buscar o registrar cliente para esta venta"
+            >
+              <i class="fa-solid fa-magnifying-glass text-xs"></i>
+              <span class="hidden sm:inline">Buscar / + Cliente</span>
+              <span class="sm:hidden">Cliente</span>
+            </button>
+            <button 
+              type="button" 
+              id="btn-remove-client"
+              class="hidden p-1.5 rounded-lg text-slate-400 hover:text-rose-400 hover:bg-slate-800 transition-colors cursor-pointer text-xs"
+              title="Quitar cliente y volver a Público General"
+              aria-label="Quitar cliente"
+            >
+              <i class="fa-solid fa-xmark"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- ADDED ITEMS IN CART (Dynamic Cart List) -->
+        <div>
+          <!-- Header de Productos en Carrito -->
+          <div class="flex items-center justify-between text-xs font-gamer uppercase tracking-wider text-slate-400 mb-2">
+            <span>Productos en Carrito (<span id="cart-item-count">0</span>)</span>
+          </div>
+
+          <!-- Botón Vaciar Carrito (Ubicado por debajo del encabezado, con icono y fondo visible estilo secundario/peligro) -->
+          <div class="flex justify-end mb-2.5">
+            <button 
+              id="btn-clear-cart" 
+              class="text-[11px] text-rose-300 hover:text-rose-100 font-mono transition-all bg-rose-950/50 hover:bg-rose-900/70 border border-rose-500/40 hover:border-rose-500/70 px-2.5 py-1 rounded-lg flex items-center gap-1.5 shadow-sm cursor-pointer"
+            >
+              <span>Vaciar carrito</span>
+              <svg class="w-3.5 h-3.5 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="21" r="1"/>
+                <circle cx="19" cy="21" r="1"/>
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+              </svg>
+            </button>
+          </div>
+
+          <!-- Cart Scrollable List -->
+          <div id="cart-items-container" class="space-y-2 max-h-56 overflow-y-auto pr-1">
+            <!-- Dynamic Cart Items injected by js/pos.js -->
+          </div>
+
+          <!-- Empty Cart Notice -->
+          <div id="cart-empty-message" class="flex flex-col items-center justify-center p-8 text-center bg-slate-950/40 border border-slate-800/80 rounded-xl">
+            <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-400 mb-2">
+              <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="8" cy="21" r="1"/>
+                <circle cx="19" cy="21" r="1"/>
+                <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"/>
+              </svg>
+            </div>
+            <p class="font-semibold text-xs text-slate-300">El carrito de venta está vacío</p>
+            <p class="text-[11px] text-slate-500 mt-0.5">Haz clic en cualquier producto a la izquierda para agregarlo.</p>
+          </div>
+        </div>
+
+        <!-- CALCULATIONS BREAKDOWN -->
+        <div class="space-y-2.5 text-xs sm:text-sm border-t border-slate-800/80 pt-3">
+          
+          <div class="flex items-center justify-between text-slate-300 text-xs">
+            <span class="font-medium text-slate-400">Subtotal:</span>
+            <span id="pos-subtotal" class="font-mono font-semibold text-slate-200">$0.00</span>
+          </div>
+
+          <!-- Renglón dinámico Descuento Cliente (5%) -->
+          <div id="row-client-discount" class="hidden items-center justify-between text-emerald-400 text-xs font-mono font-semibold">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-tag text-xs text-emerald-400"></i>
+              <span>Descuento Cliente (5%):</span>
+            </span>
+            <span id="pos-client-discount">-$0.00</span>
+          </div>
+
+          <!-- Renglón dinámico Anticipo Preventa acreditado -->
+          <div id="row-preventa-credit" class="hidden items-center justify-between text-amber-400 text-xs font-mono font-semibold">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-ticket text-xs text-amber-400"></i>
+              <span id="label-preventa-credit">Anticipo Preventa:</span>
+              <button 
+                type="button" 
+                id="btn-remove-preventa-credit" 
+                class="text-amber-400 hover:text-rose-400 text-xs px-1 py-0.2 rounded hover:bg-slate-800 transition-colors cursor-pointer" 
+                title="Quitar anticipo de preventa de esta orden"
+                aria-label="Quitar anticipo"
+              >
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </span>
+            <span id="pos-preventa-credit">-$0.00</span>
+          </div>
+
+          <div class="flex items-center justify-between text-slate-300 text-xs">
+            <span class="font-medium text-slate-400">IVA (16%):</span>
+            <span id="pos-tax" class="font-mono font-semibold text-slate-200">$0.00</span>
+          </div>
+
+          <!-- Discount Inputs -->
+          <div class="grid grid-cols-2 gap-2 pt-1">
+            <div>
+              <label class="block text-[10px] font-gamer uppercase text-slate-400 mb-0.5">Cupón Descuento</label>
+              <input 
+                type="text" 
+                id="discount-code" 
+                placeholder="Código (ej. VIP10)"
+                class="vault-input w-full px-2 py-1.5 rounded-lg text-xs font-mono text-slate-100 placeholder-slate-500 outline-none uppercase"
+              >
+            </div>
+            <div>
+              <label class="block text-[10px] font-gamer uppercase text-slate-400 mb-0.5">Descuento Manual ($)</label>
+              <input 
+                type="number" 
+                id="discount-amount" 
+                value="0"
+                min="0"
+                step="1"
+                class="vault-input w-full px-2 py-1.5 rounded-lg text-xs font-mono text-slate-100 outline-none"
+              >
+            </div>
+          </div>
+
+          <!-- Grand Total Illuminated with clean vertical spacing (mt-6) -->
+          <div class="p-3.5 rounded-xl bg-slate-900/90 border border-cyan-500/30 flex items-center justify-between mt-6 shadow-[0_0_20px_rgba(6,182,212,0.15)]">
+            <div>
+              <span class="text-[11px] font-gamer tracking-widest uppercase font-bold text-cyan-300">TOTAL A COBRAR</span>
+              <p class="text-[10px] font-mono text-slate-400">IVA incluido</p>
+            </div>
+            <div id="pos-total" class="font-display font-black text-2xl sm:text-3xl text-cyan-400 glow-text-cyan tracking-tight">
+              $0.00
+            </div>
+          </div>
+
+        </div>
+
+        <!-- PAYMENT METHOD SELECTION -->
+        <div class="space-y-2">
+          <label class="block text-xs font-gamer uppercase tracking-wider font-bold text-slate-300">
+            Forma de Pago:
+          </label>
+
+          <div class="grid grid-cols-3 gap-2 select-none">
+            
+            <!-- Cash -->
+            <button 
+              type="button" 
+              class="payment-method-btn active flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-cyan-400 bg-cyan-950/50 shadow-[0_0_15px_rgba(6,182,212,0.3)] transition-all cursor-pointer"
+              data-method="cash"
+            >
+              <svg class="w-5 h-5 text-cyan-400 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <rect x="2" y="6" width="20" height="12" rx="2" stroke-width="2"/>
+                <circle cx="12" cy="12" r="2" stroke-width="2"/>
+                <path d="M6 12h.01M18 12h.01" stroke-width="2" stroke-linecap="round"/>
+              </svg>
+              <span class="font-bold text-xs text-white">Efectivo</span>
+              <span class="text-[9px] text-cyan-300 font-mono">Cash</span>
+            </button>
+
+            <!-- Card -->
+            <button 
+              type="button" 
+              class="payment-method-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-800 bg-slate-900/70 hover:border-slate-700 transition-all text-slate-400 hover:text-slate-200 cursor-pointer"
+              data-method="card"
+            >
+              <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <rect x="2" y="5" width="20" height="14" rx="2" stroke-width="2"/>
+                <line x1="2" y1="10" x2="22" y2="10" stroke-width="2"/>
+              </svg>
+              <span class="font-bold text-xs text-slate-200">Tarjeta</span>
+              <span class="text-[9px] font-mono">Card POS</span>
+            </button>
+
+            <!-- Transfer -->
+            <button 
+              type="button" 
+              class="payment-method-btn flex flex-col items-center justify-center p-2.5 rounded-xl border-2 border-slate-800 bg-slate-900/70 hover:border-slate-700 transition-all text-slate-400 hover:text-slate-200 cursor-pointer"
+              data-method="transfer"
+            >
+              <svg class="w-5 h-5 mb-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 14v3m4-3v3m4-3v3M3 21h18M3 10h18M3 7l9-4 9 4M4 10h16v11H4V10z" />
+              </svg>
+              <span class="font-bold text-xs text-slate-200">Transf.</span>
+              <span class="text-[9px] font-mono">Transfer</span>
+            </button>
+
+          </div>
+
+          <!-- Dynamic Cash Calculator (Shown if Cash is selected) -->
+          <!-- Formato de texto: "Monto recibido: $XX.XX" sin paréntesis -->
+          <div id="cash-calculator" class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5 mt-1.5 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="text-slate-400 font-mono">Monto recibido:</span>
+              <div class="relative flex items-center">
+                <span class="absolute left-2.5 text-xs font-mono font-bold text-emerald-400 pointer-events-none">$</span>
+                <input 
+                  type="number" 
+                  id="monto-recibido" 
+                  placeholder="0.00"
+                  step="any"
+                  min="0"
+                  class="vault-input w-28 pl-6 pr-2.5 py-0.5 rounded text-right font-mono text-xs font-bold text-emerald-400 outline-none"
+                >
+              </div>
+            </div>
+            <div class="flex items-center justify-between pt-1 border-t border-slate-800">
+              <span class="text-slate-400 font-mono">Cambio / Vuelto:</span>
+              <span id="cash-change" class="font-mono font-bold text-xs text-emerald-400">$0.00</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prominent COMPLETE SALE Button -->
+        <button 
+          id="btn-complete-sale" 
+          type="button" 
+          class="w-full py-3.5 px-5 rounded-xl font-display font-bold text-sm tracking-wider uppercase text-slate-950 bg-cyan-400 hover:bg-cyan-300 active:scale-[0.99] transition-all duration-200 shadow-md flex items-center justify-center gap-2.5 cursor-pointer"
+        >
+          <svg class="w-5 h-5 text-slate-950" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+          </svg>
+          <span>COMPLETAR VENTA</span>
+        </button>
+
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- RECEIPT MODAL: Ticket de Venta Exitoso -->
+  <div id="receipt-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-slate-700 shadow-xl max-h-[92vh] overflow-y-auto">
+      
+      <!-- Ticket Header -->
+      <div class="text-center space-y-1 pb-3 border-b border-slate-800">
+        <div class="w-12 h-12 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 flex items-center justify-center mx-auto mb-1.5">
+          <svg class="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <h3 class="font-display font-bold text-lg text-white">¡VENTA COMPLETADA CON ÉXITO!</h3>
+        <p class="text-xs font-mono text-cyan-400">GameVault Store • Terminal POS 01</p>
+        <p id="receipt-ticket-id" class="text-xs font-mono font-bold text-slate-300">TICKET #GV-0042</p>
+        <p id="receipt-cashier-label" class="text-[11px] font-mono text-slate-400">Atendido por: Sora Cloud (Empleado)</p>
+        <p id="receipt-client-label" class="text-[11px] font-mono text-cyan-300">Cliente: Público General</p>
+        <p id="receipt-date" class="text-[10px] font-mono text-slate-500">2026-09-27 15:50:00</p>
+      </div>
+
+      <!-- SECCIÓN DEDICADA DE PINES DIGITALES ASIGNADOS (Confirmación en Pantalla) -->
+      <div id="receipt-pins-container" class="hidden flex-col gap-2 p-3.5 rounded-xl bg-emerald-950/40 border border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.15)] text-xs font-mono">
+        <div class="flex items-center justify-between border-b border-emerald-500/30 pb-1.5">
+          <div class="flex items-center gap-1.5">
+            <i class="fa-solid fa-bolt text-emerald-400"></i>
+            <span class="font-gamer uppercase font-bold text-emerald-300 tracking-wider">Pines Digitales Asignados</span>
+          </div>
+          <span class="text-[9px] px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 font-bold uppercase">
+            Entrega Inmediata
+          </span>
+        </div>
+        <p class="text-[10px] text-slate-300">
+          Código(s) alfanumérico(s) de activación inmediata asignados del inventario:
+        </p>
+        <div id="receipt-pins-list" class="space-y-2 pt-1">
+          <!-- Injected dynamically with copy button -->
+        </div>
+        <div id="receipt-pins-copy-all-row" class="hidden pt-1.5 border-t border-emerald-500/20 text-right">
+          <button 
+            type="button" 
+            id="btn-copy-all-pins"
+            class="text-[11px] px-2.5 py-1 rounded-lg bg-emerald-900/60 hover:bg-emerald-800 border border-emerald-500/40 text-emerald-200 hover:text-white transition-all cursor-pointer font-bold inline-flex items-center gap-1.5"
+          >
+            <i class="fa-regular fa-copy"></i>
+            <span>Copiar todos los códigos</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Ticket Items List -->
+      <div class="space-y-1.5 text-xs font-mono bg-slate-950/70 p-3.5 rounded-xl border border-slate-800/80 max-h-48 overflow-y-auto">
+        <div class="flex justify-between font-bold text-slate-400 border-b border-slate-800 pb-1 text-[11px]">
+          <span>Cant. x Producto</span>
+          <span>Importe</span>
+        </div>
+        <div id="receipt-items-list" class="space-y-1 pt-1 text-slate-300 text-[11px]">
+          <!-- Injected dynamically -->
+        </div>
+      </div>
+
+      <!-- Receipt Financial Summary -->
+      <div class="space-y-1 text-xs font-mono border-t border-slate-800 pt-2.5">
+        <div class="flex justify-between text-slate-400">
+          <span>Método de Pago:</span>
+          <span id="receipt-method" class="text-slate-200 font-bold uppercase">EFECTIVO</span>
+        </div>
+        <div class="flex justify-between text-slate-400">
+          <span>Subtotal:</span>
+          <span id="receipt-subtotal" class="text-slate-300">$0.00</span>
+        </div>
+        <div id="receipt-discount-row" class="hidden justify-between text-emerald-400">
+          <span>Descuento Cliente (5%):</span>
+          <span id="receipt-discount">-$0.00</span>
+        </div>
+        <div id="receipt-preventa-row" class="hidden justify-between text-amber-400">
+          <span>Anticipo Preventa:</span>
+          <span id="receipt-preventa">-$0.00</span>
+        </div>
+        <div id="receipt-delivery-date-row" class="hidden justify-between text-purple-300 font-bold bg-purple-950/40 p-2 rounded-lg border border-purple-500/30 text-[11px]">
+          <span class="flex items-center gap-1.5">
+            <svg class="w-3.5 h-3.5 text-purple-400 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Fecha estimada de entrega:
+          </span>
+          <span id="receipt-delivery-date" class="font-mono text-purple-200">DD/MM/AAAA</span>
+        </div>
+        <div class="flex justify-between text-slate-400">
+          <span>IVA (16%):</span>
+          <span id="receipt-tax" class="text-slate-300">$0.00</span>
+        </div>
+        <div class="flex justify-between text-sm font-bold text-cyan-300 pt-1 border-t border-slate-800/80">
+          <span>TOTAL COBRADO:</span>
+          <span id="receipt-total">$0.00</span>
+        </div>
+      </div>
+
+      <!-- Actions -->
+      <div id="receipt-whatsapp-row" class="hidden pt-1">
+        <button 
+          type="button" 
+          id="btn-whatsapp-receipt" 
+          class="w-full py-2.5 px-3 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-emerald-950 bg-emerald-400 hover:bg-emerald-300 active:scale-[0.99] transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+          title="Enviar comprobante digital de compra o preventa por WhatsApp al cliente"
+        >
+          <svg class="w-4 h-4 fill-current shrink-0" viewBox="0 0 24 24">
+            <path d="M12.04 2c-5.46 0-9.91 4.45-9.91 9.91 0 1.75.46 3.45 1.32 4.95L2.05 22l5.25-1.38c1.45.79 3.08 1.21 4.74 1.21 5.46 0 9.91-4.45 9.91-9.91 0-2.65-1.03-5.14-2.9-7.01A9.816 9.816 0 0 0 12.04 2zm.01 1.67c2.2 0 4.26.86 5.82 2.42a8.225 8.225 0 0 1 2.41 5.83c0 4.54-3.7 8.24-8.24 8.24-1.48 0-2.93-.4-4.2-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.196 8.196 0 0 1-1.26-4.38c0-4.54 3.7-8.24 8.24-8.24zm4.52 11.66c-.25-.13-1.47-.72-1.7-.81-.23-.08-.39-.13-.56.13-.17.25-.64.81-.79.97-.14.17-.29.19-.54.06-.25-.13-1.06-.39-2.02-1.25-.75-.67-1.26-1.5-1.41-1.75-.15-.25-.02-.39.11-.51.11-.11.25-.29.38-.44.13-.14.17-.25.25-.42.08-.17.04-.31-.02-.44-.06-.13-.56-1.35-.77-1.85-.2-.49-.41-.42-.56-.43l-.48-.01c-.17 0-.44.06-.67.31-.23.25-.88.86-.88 2.1 0 1.24.9 2.44 1.03 2.61.13.17 1.77 2.7 4.28 3.79.6.26 1.07.41 1.43.53.6.19 1.15.16 1.58.1.48-.07 1.47-.6 1.68-1.18.21-.58.21-1.07.15-1.18-.07-.12-.23-.19-.48-.31z"/>
+          </svg>
+          <span>Enviar Ticket por WhatsApp</span>
+        </button>
+      </div>
+
+      <div class="flex gap-2.5 pt-1">
+        <button 
+          id="btn-print-receipt" 
+          type="button" 
+          class="flex-1 py-2 px-3 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer flex items-center justify-center gap-1.5"
+          onclick="window.print();"
+        >
+          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect width="12" height="8" x="6" y="14"/>
+          </svg>
+          <span>Imprimir</span>
+        </button>
+        <button 
+          id="btn-new-sale" 
+          type="button" 
+          class="flex-1 py-2 px-3 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-slate-950 bg-cyan-400 hover:bg-cyan-300 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <span>Nueva Venta</span>
+          <i class="fa-solid fa-arrow-right text-xs"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- CORTE DE CAJA MODAL (Solo Admin) -->
+  <div id="corte-caja-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-xl w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-amber-500/40 shadow-2xl max-h-[92vh] overflow-y-auto">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-amber-950/80 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm shrink-0">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect width="20" height="14" x="2" y="5" rx="2"/>
+              <line x1="2" x2="22" y1="10" x2="10"/>
+              <path d="M7 15h.01"/>
+              <path d="M17 15h.01"/>
+            </svg>
+          </div>
+          <div>
+            <div class="flex items-center gap-2">
+              <h3 class="font-display font-bold text-base sm:text-lg text-white">CORTE DE CAJA // RESUMEN DEL DÍA</h3>
+              <span class="text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 uppercase tracking-wider inline-flex items-center gap-1">
+                <i class="fa-solid fa-shield text-[10px]"></i>
+                <span>Solo Admin</span>
+              </span>
+            </div>
+            <p class="text-[11px] font-mono text-slate-400">Arqueo de Turno & Balance Contable • Terminal POS 01</p>
+          </div>
+        </div>
+        <button id="btn-close-corte" class="text-slate-400 hover:text-white text-base p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer" title="Cerrar ventana" aria-label="Cerrar ventana"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Turno / Metadata Info Strip -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-2.5 text-xs font-mono bg-slate-950/80 p-3 rounded-xl border border-slate-800/80">
+        <div>
+          <span class="text-slate-500 block text-[10px] uppercase font-gamer">Responsable Admin:</span>
+          <span id="corte-admin-name" class="text-slate-200 font-bold">Daniela Blanco</span>
+        </div>
+        <div>
+          <span class="text-slate-500 block text-[10px] uppercase font-gamer">Fecha y Hora:</span>
+          <span id="corte-timestamp" class="text-slate-300 font-semibold">--</span>
+        </div>
+        <div>
+          <span class="text-slate-500 block text-[10px] uppercase font-gamer">Tickets Emitidos:</span>
+          <span id="corte-ticket-count" class="text-cyan-400 font-bold">42 ventas</span>
+        </div>
+      </div>
+
+      <!-- Resumen del Día (GET /api/caja/resumen-hoy) -->
+      <div class="space-y-2 text-xs font-mono">
+        <div class="flex items-center justify-between text-slate-400 text-[11px] font-gamer uppercase tracking-wider px-1">
+          <span>Resumen de Cobros de la Jornada (GET /api/caja/resumen-hoy)</span>
+          <span class="text-amber-400 font-bold">Terminal 01</span>
+        </div>
+
+        <div class="p-3.5 bg-slate-900/70 rounded-xl border border-slate-800 space-y-2.5">
+          <!-- 1. Fondo Inicial de Caja -->
+          <div class="flex justify-between items-center text-slate-300">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-vault text-slate-400 text-sm w-4 text-center"></i>
+              <span>Fondo inicial de caja (Apertura):</span>
+            </span>
+            <span class="font-bold text-slate-100 font-mono text-sm" id="corte-fondo-inicial">$500.00</span>
+          </div>
+
+          <!-- 2. Ventas Totales en Efectivo -->
+          <div class="flex justify-between items-center text-slate-300">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-money-bill-wave text-emerald-400 text-sm w-4 text-center"></i>
+              <span>Ventas Totales en Efectivo:</span>
+            </span>
+            <span class="font-bold text-emerald-400 font-mono text-sm" id="corte-cash-sales">$1,240.00</span>
+          </div>
+
+          <!-- 3. Ventas Totales en Tarjeta -->
+          <div class="flex justify-between items-center text-slate-300">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-credit-card text-indigo-400 text-sm w-4 text-center"></i>
+              <span>Ventas Totales en Tarjeta:</span>
+            </span>
+            <span class="font-bold text-indigo-400 font-mono text-sm" id="corte-card-sales">$2,860.50</span>
+          </div>
+
+          <!-- 4. Ventas Totales por Transferencia -->
+          <div class="flex justify-between items-center text-slate-300">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-mobile-screen-button text-purple-400 text-sm w-4 text-center"></i>
+              <span>Ventas Totales por Transferencia:</span>
+            </span>
+            <span class="font-bold text-purple-400 font-mono text-sm" id="corte-transfer-sales">$450.00</span>
+          </div>
+
+          <!-- 5. Total Recaudado por Anticipos de Preventa -->
+          <div class="flex justify-between items-center text-slate-300 border-t border-slate-800/80 pt-2">
+            <span class="flex items-center gap-1.5">
+              <i class="fa-solid fa-ticket text-amber-400 text-sm w-4 text-center"></i>
+              <div>
+                <span>Total Recaudado por Anticipos de Preventa:</span>
+                <span class="block text-[10px] text-slate-500 font-sans" id="corte-anticipos-cash-note">Anticipos en efectivo: $85.00</span>
+              </div>
+            </span>
+            <span class="font-bold text-amber-400 font-mono text-sm" id="corte-anticipos-sales">$185.00</span>
+          </div>
+
+          <!-- 6. Total General Cobrado -->
+          <div class="flex justify-between items-center pt-2.5 border-t border-slate-700/80 bg-slate-950/40 p-2 rounded-lg">
+            <span class="font-bold text-cyan-300 text-xs sm:text-sm font-gamer uppercase tracking-wide">
+              Total General Cobrado:
+            </span>
+            <span id="corte-total-cobrado" class="font-display font-bold text-base sm:text-lg text-cyan-400">
+              $4,735.50
+            </span>
+          </div>
+
+          <!-- 7. Efectivo Esperado en Caja -->
+          <div class="p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+            <div>
+              <span class="text-xs font-gamer tracking-wider font-bold text-amber-300 uppercase block">
+                Efectivo Esperado en Caja:
+              </span>
+              <p class="text-[10px] text-slate-400 font-sans">
+                = (Fondo Inicial + Ventas en Efectivo)
+              </p>
+            </div>
+            <div id="corte-efectivo-esperado" class="font-display font-black text-lg sm:text-xl text-amber-400 tracking-tight">
+              $1,825.00
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. REGISTRO DE ARQUEO -->
+      <div class="space-y-3 p-3.5 bg-slate-950/90 rounded-xl border border-slate-800 text-xs font-mono">
+        <div class="flex items-center justify-between">
+          <span class="font-gamer font-bold text-xs uppercase tracking-wider text-slate-300 flex items-center gap-1.5">
+            <i class="fa-solid fa-scale-balanced text-amber-400"></i>
+            <span>Registro de Arqueo Físico de Cajón</span>
+          </span>
+          <span class="text-[10px] text-slate-500 font-sans">Conteo físico de efectivo</span>
+        </div>
+
+        <div>
+          <div class="flex items-center justify-between mb-1">
+            <label for="corte-efectivo-real" class="block text-[11px] font-bold text-slate-300 uppercase font-gamer">
+              Efectivo Real en Cajón ($) *
+            </label>
+            <button 
+              type="button" 
+              id="btn-corte-auto-cuadrar"
+              class="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
+              title="Copiar monto de efectivo esperado al conteo real"
+            >
+              Copiar Monto Esperado
+            </button>
+          </div>
+          <div class="relative">
+            <span class="absolute left-3.5 top-2.5 text-sm font-mono font-bold text-emerald-400 pointer-events-none">$</span>
+            <input 
+              type="number" 
+              id="corte-efectivo-real" 
+              step="any" 
+              min="0"
+              placeholder="0.00" 
+              class="vault-input w-full pl-8 pr-3 py-2 rounded-xl text-slate-100 font-mono text-sm font-bold text-emerald-300 outline-none border border-slate-700 focus:border-amber-400"
+            >
+          </div>
+        </div>
+
+        <!-- Indicador de Diferencia y Estado -->
+        <div class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2.5">
+          <div>
+            <span class="text-[10px] text-slate-400 uppercase font-gamer block">Diferencia (Real - Esperado)</span>
+            <span id="corte-diferencia-val" class="font-mono font-bold text-sm text-slate-400">$0.00</span>
+          </div>
+          <div id="corte-arqueo-badge" class="px-3 py-1.5 rounded-full text-xs font-mono font-bold bg-slate-800 text-slate-300 border border-slate-700 flex items-center gap-1.5">
+            <i class="fa-regular fa-clock text-xs"></i>
+            <span>Ingrese el conteo en cajón</span>
+          </div>
+        </div>
+
+        <!-- Observaciones de Arqueo -->
+        <div>
+          <label for="corte-notas" class="block text-[10px] text-slate-400 uppercase font-gamer mb-1">Observaciones / Notas de Cierre (Opcional):</label>
+          <input 
+            type="text" 
+            id="corte-notas" 
+            placeholder="ej. Billetes en fajos verificados, entrega a bóveda sin incidencias..." 
+            class="vault-input w-full px-3 py-1.5 rounded-lg text-slate-200 placeholder-slate-600 outline-none font-mono text-xs"
+          >
+        </div>
+      </div>
+
+      <!-- Banner de Éxito / Confirmación tras Cierre -->
+      <div id="corte-success-banner" class="hidden p-3 rounded-xl bg-emerald-950/70 border border-emerald-500/50 text-emerald-200 text-xs font-mono space-y-1">
+        <div class="flex items-center gap-1.5 font-bold text-emerald-300">
+          <svg class="w-4 h-4 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+          <span>¡Turno Cerrado y Corte de Caja Archivado con Éxito!</span>
+        </div>
+        <p class="text-[11px] text-slate-300">
+          El reporte contable fue guardado vía POST /api/caja/cierre. Puedes imprimir el comprobante o descargar el reporte en texto.
+        </p>
+      </div>
+
+      <!-- Botones de Acción -->
+      <div class="flex flex-col sm:flex-row gap-2 pt-1 no-print">
+        <button 
+          type="button" 
+          id="btn-download-corte" 
+          class="flex-1 py-2.5 px-3 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          title="Descargar reporte completo en formato texto .txt"
+        >
+          <svg class="w-4 h-4 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="7 10 12 15 17 10"/>
+            <line x1="12" x2="12" y1="15" y2="3"/>
+          </svg>
+          <span>Descargar Reporte</span>
+        </button>
+
+        <button 
+          type="button" 
+          id="btn-print-corte" 
+          class="flex-1 py-2.5 px-3 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-200 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-slate-600 transition-all cursor-pointer flex items-center justify-center gap-1.5"
+          title="Imprimir balance y arqueo del corte"
+        >
+          <svg class="w-4 h-4 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="6 9 6 2 18 2 18 9"/>
+            <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+            <rect width="12" height="8" x="6" y="14"/>
+          </svg>
+          <span>Imprimir Corte</span>
+        </button>
+
+        <button 
+          type="button" 
+          id="btn-confirm-corte" 
+          class="flex-1 py-2.5 px-4 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-slate-950 bg-amber-400 hover:bg-amber-300 transition-all shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+        >
+          <svg class="w-4 h-4 text-slate-950" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+          </svg>
+          <span>Cerrar Turno y Guardar</span>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: CLIENTES (Seleccionar o Registrar)      -->
+  <!-- ============================================== -->
+  <div id="client-modal" class="fixed inset-0 z-[60] bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-cyan-500/40 shadow-2xl">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-400">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+            </svg>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-base text-white">GESTIÓN DE CLIENTES</h3>
+            <p class="text-[10px] font-mono text-cyan-300">Selecciona o registra un cliente para el 5% de descuento</p>
+          </div>
+        </div>
+        <button id="btn-close-client-modal" class="text-slate-400 hover:text-white text-base cursor-pointer" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Search Section (GET /api/clientes) -->
+      <div class="space-y-2">
+        <label class="block text-xs font-gamer uppercase text-slate-300 font-bold">Buscar Cliente Existente:</label>
+        <div class="relative">
+          <input 
+            type="text" 
+            id="client-search-input" 
+            placeholder="Buscar por nombre o teléfono..." 
+            class="vault-input w-full pl-9 pr-3 py-2 rounded-xl text-xs text-slate-100 placeholder-slate-500 outline-none border border-slate-700 focus:border-cyan-400"
+          >
+          <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+          </svg>
+        </div>
+
+        <!-- Clients Search Results List -->
+        <div id="client-search-results" class="max-h-40 overflow-y-auto space-y-1.5 pr-1 divide-y divide-slate-800/60">
+          <!-- Injected dynamically -->
+        </div>
+
+        <!-- Botón para asignar Público General -->
+        <div class="pt-1 flex justify-between items-center text-[11px] font-mono">
+          <span class="text-slate-500">¿Sin cliente registrado?</span>
+          <button 
+            type="button" 
+            id="btn-assign-general" 
+            class="text-slate-400 hover:text-slate-200 underline cursor-pointer"
+          >
+            Usar Público General (Sin descuento)
+          </button>
+        </div>
+      </div>
+
+      <!-- Quick Registration Form (POST /api/clientes) -->
+      <div class="border-t border-slate-800 pt-3">
+        <h4 class="text-xs font-gamer uppercase text-cyan-300 font-bold mb-2 flex items-center gap-1.5">
+          <i class="fa-solid fa-user-plus text-xs"></i>
+          <span>Alta Rápida de Nuevo Cliente</span>
+        </h4>
+        <form id="client-create-form" class="space-y-2.5 text-xs">
+          <div>
+            <label for="client-name-input" class="block text-[10px] font-mono text-slate-400 mb-0.5">Nombre Completo *</label>
+            <input 
+              type="text" 
+              id="client-name-input" 
+              required 
+              placeholder="ej. Mariana Torres" 
+              class="vault-input w-full px-3 py-1.5 rounded-lg text-slate-100 placeholder-slate-500 outline-none"
+            >
+          </div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div>
+              <label for="client-phone-input" class="block text-[10px] font-mono text-slate-400 mb-0.5">Teléfono *</label>
+              <input 
+                type="tel" 
+                id="client-phone-input" 
+                required 
+                placeholder="ej. 5512345678" 
+                class="vault-input w-full px-3 py-1.5 rounded-lg text-slate-100 placeholder-slate-500 outline-none font-mono"
+              >
+            </div>
+            <div>
+              <label for="client-email-input" class="block text-[10px] font-mono text-slate-400 mb-0.5">Email (Opcional)</label>
+              <input 
+                type="email" 
+                id="client-email-input" 
+                placeholder="mariana@correo.com" 
+                class="vault-input w-full px-3 py-1.5 rounded-lg text-slate-100 placeholder-slate-500 outline-none"
+              >
+            </div>
+          </div>
+          <div class="pt-2 flex gap-2">
+            <button 
+              type="button" 
+              id="btn-cancel-client-create"
+              class="flex-1 py-2 px-3 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+            <button 
+              type="submit" 
+              class="flex-1 py-2 px-3 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-slate-950 bg-cyan-400 hover:bg-cyan-300 transition-colors shadow-sm cursor-pointer inline-flex items-center justify-center gap-1.5"
+            >
+              <i class="fa-solid fa-check"></i>
+              <span>Guardar y Asignar</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ============================================== -->
+  <!-- MODAL: PREVENTAS Y RESERVAS                    -->
+  <!-- ============================================== -->
+  <div id="preventas-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-2xl w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-purple-500/40 shadow-2xl">
+      
+      <!-- Modal Header -->
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-8 h-8 rounded-lg bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-400">
+            <i class="fa-solid fa-tag text-purple-400 text-sm"></i>
+          </div>
+          <div>
+            <h3 class="font-display font-bold text-base text-white">PREVENTAS & RESERVAS</h3>
+            <p class="text-[10px] font-mono text-purple-300">Gestión de apartados y pre-órdenes con anticipo</p>
+          </div>
+        </div>
+        <button id="btn-close-preventas-modal" class="text-slate-400 hover:text-white text-base cursor-pointer" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <!-- Navigation Tabs -->
+      <div class="flex p-1 rounded-xl bg-slate-900 border border-slate-800 font-gamer text-xs tracking-wider uppercase select-none">
+        <button 
+          type="button" 
+          id="tab-preventas-new"
+          class="flex-1 py-2 px-3 rounded-lg font-bold transition-all bg-purple-600 text-white shadow-sm flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span>Nueva Reserva</span>
+        </button>
+        <button 
+          type="button" 
+          id="tab-preventas-list"
+          class="flex-1 py-2 px-3 rounded-lg font-bold transition-all text-slate-400 hover:text-slate-200 flex items-center justify-center gap-1.5 cursor-pointer"
+        >
+          <i class="fa-solid fa-list-check text-xs"></i>
+          <span>Consultar Reservas</span>
+          <span id="badge-preventas-count" class="ml-1 text-[10px] px-2 py-0.2 rounded-full bg-slate-800 text-purple-300 font-mono">0</span>
+        </button>
+      </div>
+
+      <!-- TAB 1: FORMULARIO NUEVA RESERVA (POST /api/preventas) -->
+      <div id="view-preventas-new" class="space-y-3.5 text-xs">
+        <form id="preventas-form" class="space-y-3">
+          
+          <!-- Selector de Cliente con botón "+ Nuevo Cliente" (GET /api/clientes) -->
+          <div>
+            <label class="block font-gamer uppercase font-bold text-slate-300 mb-1">
+              Cliente que Reserva *
+            </label>
+            <div class="flex items-center gap-2">
+              <select 
+                id="preventa-client-select" 
+                required 
+                class="vault-input flex-1 px-3 py-2 rounded-xl text-slate-100 bg-slate-900 border border-slate-700 outline-none font-mono text-xs"
+              >
+                <!-- Injected dynamically from GET /api/clientes -->
+              </select>
+              <button 
+                type="button" 
+                id="btn-preventa-quick-client"
+                class="px-3 py-2 rounded-xl text-xs font-mono font-bold bg-purple-950/80 border border-purple-500/40 text-purple-300 hover:text-white hover:bg-purple-900 transition-all shrink-0 cursor-pointer flex items-center gap-1"
+                title="Registrar cliente rápido sin perder los datos del formulario"
+              >
+                <i class="fa-solid fa-user-plus text-xs"></i>
+                <span>Nuevo Cliente</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Selector de Producto (GET /api/productos) -->
+          <div>
+            <label for="preventa-product-select" class="block font-gamer uppercase font-bold text-slate-300 mb-1">
+              Producto o Videojuego en Preventa *
+            </label>
+            <select 
+              id="preventa-product-select" 
+              required 
+              class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 bg-slate-900 border border-slate-700 outline-none font-mono text-xs"
+            >
+              <!-- Injected dynamically from GET /api/productos -->
+            </select>
+          </div>
+
+          <!-- Monto de Anticipo ($) FIJO 50% -->
+          <div>
+            <div class="flex items-center justify-between mb-1">
+              <label for="preventa-anticipo-input" class="block font-gamer uppercase font-bold text-slate-300">
+                Monto de Anticipo (50% Fijo) *
+              </label>
+              <span class="text-[10px] font-mono text-purple-300 font-semibold bg-purple-500/10 border border-purple-500/30 px-2 py-0.5 rounded-full">
+                50% OBLIGATORIO
+              </span>
+            </div>
+            <div class="relative">
+              <span class="absolute left-3 top-2 text-xs font-mono font-bold text-emerald-400 pointer-events-none">$</span>
+              <input 
+                type="number" 
+                id="preventa-anticipo-input" 
+                min="0.01" 
+                step="any" 
+                required 
+                readonly
+                placeholder="0.00" 
+                class="vault-input w-full pl-7 pr-3 py-2 rounded-xl text-slate-100 outline-none font-mono text-xs font-bold text-emerald-400 bg-slate-900/90 cursor-not-allowed border border-slate-700/80"
+              >
+            </div>
+            <p id="preventa-helper-text" class="text-[10px] text-slate-400 font-mono mt-1">
+              Selecciona un producto para calcular automáticamente el 50% de anticipo.
+            </p>
+            <div id="preventa-release-date-info" class="hidden mt-2 p-2 rounded-lg bg-purple-950/40 border border-purple-500/30 text-purple-300 font-mono text-[11px] flex items-center justify-between">
+              <span class="flex items-center gap-1.5 font-semibold">
+                <svg class="w-3.5 h-3.5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                Fecha de Estreno:
+              </span>
+              <span id="preventa-release-date-val" class="font-bold text-white">--</span>
+            </div>
+          </div>
+
+          <div class="pt-2 flex gap-2">
+            <button 
+              type="button" 
+              id="btn-cancel-preventa"
+              class="flex-1 py-2.5 px-4 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+            >
+              Cerrar
+            </button>
+            <button 
+              type="submit" 
+              id="btn-submit-preventa"
+              class="flex-1 py-2.5 px-4 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <span>Registrar Preventa (Cobrar Anticipo 50%)</span>
+              <i class="fa-solid fa-arrow-right text-xs"></i>
+            </button>
+          </div>
+
+        </form>
+      </div>
+
+      <!-- TAB 2: CONSULTAR RESERVAS (GET /api/preventas) -->
+      <div id="view-preventas-list" class="hidden space-y-3">
+        <div class="overflow-x-auto rounded-xl border border-slate-800 max-h-72 overflow-y-auto">
+          <table class="w-full text-left text-xs font-sans">
+            <thead class="bg-slate-900/90 text-slate-400 uppercase font-gamer tracking-wider text-[11px] border-b border-slate-800 sticky top-0">
+              <tr>
+                <th class="py-2.5 px-3">Folio</th>
+                <th class="py-2.5 px-3">Fecha</th>
+                <th class="py-2.5 px-3">Cliente</th>
+                <th class="py-2.5 px-3">Producto</th>
+                <th class="py-2.5 px-3 text-right">Anticipo Pagado</th>
+                <th class="py-2.5 px-3 text-right">Saldo Restante</th>
+                <th class="py-2.5 px-3 text-center">Estado</th>
+                <th class="py-2.5 px-3 text-right">Acción</th>
+              </tr>
+            </thead>
+            <tbody id="preventas-table-body" class="divide-y divide-slate-800/60 bg-slate-950/40 text-[11px] font-mono">
+              <!-- Injected dynamically from GET /api/preventas -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- MODAL: CAMBIO DE ROL AUTENTICADO -->
+  <div id="role-switch-modal" class="fixed inset-0 z-[65] bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-sm w-full rounded-2xl p-6 space-y-4 border border-purple-500/40 shadow-2xl">
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div id="role-switch-icon" class="w-8 h-8 rounded-lg bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-400">
+            <i class="fa-solid fa-shield-halved text-xs"></i>
+          </div>
+          <div>
+            <h3 id="role-switch-title" class="font-display font-bold text-sm text-white">AUTORIZACIÓN DE ROL</h3>
+            <p id="role-switch-subtitle" class="text-[10px] font-mono text-purple-300">Se requiere contraseña o PIN</p>
+          </div>
+        </div>
+        <button id="btn-close-role-switch" class="text-slate-400 hover:text-white text-base cursor-pointer" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="role-switch-form" class="space-y-3">
+        <div>
+          <label id="role-switch-label" for="role-switch-pin" class="block text-[11px] font-mono text-slate-300 mb-1">
+            Contraseña o PIN de Administrador *
+          </label>
+          <div class="relative">
+            <input 
+              type="password" 
+              id="role-switch-pin" 
+              required 
+              autocomplete="current-password"
+              placeholder="••••••••" 
+              class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none text-xs font-mono border border-slate-700 focus:border-purple-400"
+            >
+          </div>
+          <p id="role-switch-hint" class="text-[10px] text-slate-500 font-mono mt-1">
+            Ingresa la contraseña de cuenta administrativa o clave maestra.
+          </p>
+        </div>
+
+        <div class="pt-2 flex gap-2 font-mono">
+          <button 
+            type="button" 
+            id="btn-cancel-role-switch"
+            class="flex-1 py-2 px-3 rounded-xl font-bold text-xs text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="submit" 
+            id="btn-submit-role-switch"
+            class="flex-1 py-2 px-3 rounded-xl font-bold text-xs text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5"
+          >
+            <i class="fa-solid fa-check text-xs"></i>
+            <span>Verificar</span>
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Toast Notifications -->
+  <div id="pos-toast" class="fixed bottom-6 right-6 z-[70] hidden items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl text-xs sm:text-sm font-medium transition-all duration-300">
+    <span id="pos-toast-msg"></span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="w-full border-t border-slate-900 bg-[#060911]/90 py-3 px-6 text-center text-xs text-slate-500">
+    <div class="max-w-[1750px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span class="font-mono text-slate-400">GameVault Retail Management Suite • Caja POS 01</span>
+      <div class="flex items-center gap-3 font-mono text-[11px] text-cyan-400/80">
+        <span>F1: Buscar</span>
+        <span>•</span>
+        <span>F2: Cobrar</span>
+        <span>•</span>
+        <span>ESC: Cerrar Ticket</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- POS Application Logic -->
+  <script src="js/pos.js"></script>
+
+</body>
+</html>

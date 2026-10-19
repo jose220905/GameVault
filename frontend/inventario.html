@@ -1,0 +1,624 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GameVault - Panel de Inventario & Control de Stock (Admin)</title>
+  
+  <!-- Favicon -->
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%238b5cf6%22 stroke-width=%222%22><path d=%22M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z%22/><path d=%22m3.3 7 8.7 5 8.7-5%22/><path d=%22M12 22V12%22/></svg>">
+  
+  <!-- Tailwind CSS via CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            vault: {
+              950: '#060911',
+              900: '#0b1120',
+              850: '#0f172a',
+              800: '#1e293b',
+              accent: '#6366f1',
+              cyan: '#06b6d4',
+              neon: '#10b981',
+              purple: '#8b5cf6',
+              amber: '#f59e0b',
+              pink: '#ec4899',
+            }
+          },
+          fontFamily: {
+            gamer: ['Rajdhani', 'sans-serif'],
+            display: ['Orbitron', 'sans-serif'],
+            sans: ['Inter', 'system-ui', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Font Awesome CDN -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <!-- Google Fonts & Custom CSS -->
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body class="bg-[#060911] text-slate-100 min-h-screen cyber-grid flex flex-col justify-between selection:bg-cyan-500 selection:text-black">
+
+  <!-- ======================================================== -->
+  <!-- TOP BAR: Navigation & Admin Profile                       -->
+  <!-- ======================================================== -->
+  <header class="w-full border-b border-slate-800/80 bg-[#070b16]/90 backdrop-blur-md sticky top-0 z-40">
+    <div class="max-w-[1750px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
+      
+      <!-- Brand Logo -->
+      <a href="index.html" class="flex items-center gap-3 shrink-0 group" title="Volver al Portal">
+        <div class="flex items-center justify-center w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 group-hover:border-purple-500 transition-colors">
+          <svg class="w-6 h-6 text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/>
+          </svg>
+        </div>
+        <div>
+          <div class="flex items-center gap-2">
+            <span class="font-display font-bold tracking-wider text-xl text-white">
+              GAME<span class="text-purple-400">VAULT</span>
+            </span>
+            <span class="text-[10px] font-mono font-semibold px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 flex items-center gap-1.5">
+              <i class="fa-solid fa-boxes-stacked text-xs"></i>
+              <span>ADMIN INVENTORY</span>
+            </span>
+          </div>
+          <p class="text-[10px] font-mono tracking-widest text-slate-400 uppercase">
+            Gestión Centralizada de Inventario & Stock
+          </p>
+        </div>
+      </a>
+
+      <!-- Quick Nav: Return to POS button & Admin Status -->
+      <div class="flex items-center gap-3">
+        
+        <!-- Button to Return to POS -->
+        <a 
+          href="pos.html" 
+          class="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-slate-900 border border-slate-700 hover:border-cyan-400 text-cyan-300 hover:text-white text-xs font-mono font-bold transition-all shadow-sm"
+        >
+          <svg class="w-4 h-4 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+          </svg>
+          <span>RETORNAR AL POS</span>
+        </a>
+
+        <!-- Admin Profile Badge -->
+        <div class="flex items-center gap-2.5 px-3 py-1.5 rounded-xl bg-purple-950/50 border border-purple-500/30 text-xs shadow-md">
+          <div class="text-left leading-tight hidden sm:block">
+            <p id="inv-admin-name" class="font-bold text-slate-100">Daniela Blanco</p>
+            <span class="text-[10px] font-mono text-purple-300 font-bold uppercase">ADMINISTRADOR</span>
+          </div>
+        </div>
+
+        <!-- Exit / Logout -->
+        <a 
+          href="index.html" 
+          class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 hover:border-rose-500/40 text-slate-400 hover:text-rose-300 transition-colors"
+          title="Cerrar Sesión"
+        >
+          <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+          </svg>
+        </a>
+
+      </div>
+
+    </div>
+  </header>
+
+  <!-- ======================================================== -->
+  <!-- ACCESS RESTRICTED SCREEN (If user is not an Admin)       -->
+  <!-- ======================================================== -->
+  <div id="access-denied-screen" class="hidden flex-1 flex-col items-center justify-center p-6 text-center max-w-lg mx-auto">
+    <div class="glass-panel p-8 rounded-2xl border border-rose-500/40 shadow-xl space-y-5">
+      <div class="w-16 h-16 rounded-2xl bg-rose-950/60 border border-rose-500/40 flex items-center justify-center mx-auto shadow-md">
+        <svg class="w-8 h-8 text-rose-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      </div>
+      <div>
+        <h2 class="font-display font-black text-xl text-rose-400 tracking-wide">
+          ACCESO DENEGADO // NIVEL ADMIN REQUERIDO
+        </h2>
+        <p class="text-xs text-slate-400 mt-2 leading-relaxed">
+          El módulo de <strong>Inventario, Auditoría de Stock y Reabastecimiento</strong> está reservado exclusivamente para cuentas con rol de <strong class="text-purple-300">Administrador</strong>.
+        </p>
+        <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 mt-3 text-xs font-mono text-slate-300">
+          Sesión actual: <span id="denied-user-name" class="font-bold text-cyan-300">Sora Cloud</span> (<span id="denied-user-role" class="text-cyan-400">Empleado</span>)
+        </div>
+      </div>
+      <div class="flex flex-col gap-2 pt-2">
+        <a 
+          href="pos.html" 
+          class="w-full py-2.5 px-4 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-slate-950 bg-cyan-400 hover:bg-cyan-300 transition-all shadow-md flex items-center justify-center gap-1.5"
+        >
+          <i class="fa-solid fa-arrow-left text-xs"></i>
+          <span>Regresar al Punto de Venta POS</span>
+        </a>
+        <a 
+          href="index.html" 
+          class="w-full py-2.5 px-4 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors"
+        >
+          Cambiar de Cuenta / Iniciar como Admin
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MAIN ADMIN INVENTORY DASHBOARD CONTENT                  -->
+  <!-- ======================================================== -->
+  <main id="inventory-dashboard" class="flex-1 max-w-[1750px] w-full mx-auto p-4 sm:p-6 space-y-6">
+    
+    <!-- SECTION 1: 4 KPI METRICS CARDS -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      
+      <!-- CARD 1: Total Artículos -->
+      <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all shadow-md">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-gamer uppercase tracking-widest font-bold text-slate-400">
+            TOTAL ARTÍCULOS EN STOCK
+          </span>
+          <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-indigo-400 shadow-sm">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+              <path d="m3.3 7 8.7 5 8.7-5"/>
+              <path d="M12 22V12"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="kpi-total-items" class="font-display font-bold text-3xl sm:text-4xl text-slate-100 tracking-tight">
+            145
+          </span>
+          <span class="text-xs font-mono text-slate-400">unidades totales</span>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-[11px] font-mono text-slate-400 border-t border-slate-800/80 pt-2">
+          <span>Títulos en catálogo:</span>
+          <strong id="kpi-unique-titles" class="text-slate-200">15 juegos</strong>
+        </div>
+      </div>
+
+      <!-- CARD 2: Stock Bajo (<= 3) WARNING CARD -->
+      <div class="glass-panel p-5 rounded-2xl border border-amber-500/30 bg-slate-900/90 hover:border-amber-500/50 transition-all shadow-md">
+        <div class="flex items-center justify-between mb-3">
+          <div class="flex items-center gap-1.5">
+            <span class="text-xs font-gamer uppercase tracking-widest font-bold text-amber-300">
+              STOCK BAJO (&le; 3)
+            </span>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-amber-950/60 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-sm">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/>
+              <line x1="12" y1="9" x2="12" y2="13"/>
+              <line x1="12" y1="17" x2="12.01" y2="17"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="kpi-low-stock-count" class="font-display font-bold text-3xl sm:text-4xl text-amber-400 tracking-tight">
+            2
+          </span>
+          <span class="text-xs font-mono text-amber-300/80">productos críticos</span>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-[11px] font-mono text-amber-300/90 border-t border-slate-800 pt-2">
+          <span>Requieren reabastecimiento</span>
+          <span class="px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 font-bold">ALERTA</span>
+        </div>
+      </div>
+
+      <!-- CARD 3: Stock Óptimo (> 3) -->
+      <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all shadow-md">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-gamer uppercase tracking-widest font-bold text-slate-400">
+            STOCK ÓPTIMO (&gt; 3)
+          </span>
+          <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-emerald-400 shadow-sm">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 6 9 17l-5-5"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="kpi-optimal-stock-count" class="font-display font-bold text-3xl sm:text-4xl text-emerald-400 tracking-tight">
+            13
+          </span>
+          <span class="text-xs font-mono text-slate-400">títulos en nivel sano</span>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-[11px] font-mono text-slate-400 border-t border-slate-800/80 pt-2">
+          <span>Disponibilidad retail:</span>
+          <strong class="text-emerald-400 font-semibold">100% Suministrado</strong>
+        </div>
+      </div>
+
+      <!-- CARD 4: Valor Estimado del Inventario -->
+      <div class="glass-panel p-5 rounded-2xl border border-slate-800 hover:border-slate-700 transition-all shadow-md">
+        <div class="flex items-center justify-between mb-3">
+          <span class="text-xs font-gamer uppercase tracking-widest font-bold text-slate-400">
+            VALOR ESTIMADO TOTAL
+          </span>
+          <div class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400 shadow-sm">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <line x1="12" y1="1" x2="12" y2="23"/>
+              <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+            </svg>
+          </div>
+        </div>
+        <div class="flex items-baseline gap-2">
+          <span id="kpi-total-valuation" class="font-display font-bold text-2xl sm:text-3xl text-cyan-400 tracking-tight">
+            $18,450.00
+          </span>
+        </div>
+        <div class="mt-3 flex items-center justify-between text-[11px] font-mono text-slate-400 border-t border-slate-800/80 pt-2">
+          <span>Suma de costos & stock:</span>
+          <strong class="text-cyan-300">Inventario Activo</strong>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- SECTION 2: INVENTORY TABLE CONTROLS & SEARCH -->
+    <div class="glass-panel rounded-2xl p-5 sm:p-6 border border-slate-800 space-y-5">
+      
+      <!-- Header row of Table: Title, Search & Add Product Button -->
+      <div class="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-4">
+        
+        <!-- Section Title -->
+        <div>
+          <h3 class="font-display font-bold text-lg text-white flex items-center gap-2">
+            <span>CATÁLOGO DE VIDEOJUEGOS & EXISTENCIAS</span>
+          </h3>
+          <p class="text-xs text-slate-400 mt-0.5">
+            Supervisa existencias en tiempo real y aumenta las cantidades de stock disponibles para venta.
+          </p>
+        </div>
+
+        <!-- Actions: Search + Filter + Add New Product -->
+        <div class="flex flex-wrap items-center gap-3">
+          
+          <!-- Search input -->
+          <div class="relative min-w-[220px]">
+            <input 
+              type="text" 
+              id="inv-search-input" 
+              placeholder="Buscar título, plataforma o SKU..." 
+              class="vault-input w-full pl-9 pr-3 py-2 rounded-xl text-xs text-slate-100 placeholder-slate-500 outline-none border border-slate-700 focus:border-purple-400"
+            >
+            <svg class="w-4 h-4 text-slate-400 absolute left-3 top-2.5 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+          </div>
+
+          <!-- Stock Level Filter Select -->
+          <select id="inv-filter-stock" class="vault-input px-3 py-2 rounded-xl text-xs text-slate-200 outline-none border border-slate-700 bg-slate-900 cursor-pointer">
+            <option value="all">Todos los Niveles</option>
+            <option value="low">Stock Bajo (&le; 3)</option>
+            <option value="optimal">Stock Óptimo (&gt; 3)</option>
+          </select>
+
+          <!-- Button to Register New Product -->
+          <button 
+            id="btn-open-create-modal"
+            class="px-3.5 py-2 rounded-xl text-xs font-mono font-bold text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm flex items-center gap-1.5 cursor-pointer shrink-0"
+          >
+            <i class="fa-solid fa-plus text-xs"></i>
+            <span>Nuevo Producto</span>
+          </button>
+
+        </div>
+
+      </div>
+
+      <!-- INVENTORY DATA TABLE -->
+      <div class="overflow-x-auto rounded-xl border border-slate-800">
+        <table class="w-full text-left text-xs font-sans">
+          
+          <!-- Table Head -->
+          <thead class="bg-slate-900/90 text-slate-400 uppercase font-gamer tracking-wider text-[11px] border-b border-slate-800 select-none">
+            <tr>
+              <th scope="col" class="py-3 px-4">Producto / Título</th>
+              <th scope="col" class="py-3 px-4">Código</th>
+              <th scope="col" class="py-3 px-4">Plataforma</th>
+              <th scope="col" class="py-3 px-4 text-right">Precio Venta</th>
+              <th scope="col" class="py-3 px-4 text-center">Stock Actual</th>
+              <th scope="col" class="py-3 px-4 text-center">Estado</th>
+              <th scope="col" class="py-3 px-4 text-left whitespace-nowrap">Acciones Admin</th>
+            </tr>
+          </thead>
+
+          <!-- Table Body (Dynamically populated by js/inventario.js) -->
+          <tbody id="inventory-table-body" class="divide-y divide-slate-800/60 bg-slate-950/40">
+            <!-- Dynamic rows injected here -->
+          </tbody>
+
+        </table>
+      </div>
+
+    </div>
+
+  </main>
+
+  <!-- ======================================================== -->
+  <!-- ======================================================== -->
+  <!-- MODAL 1: REABASTECER STOCK (#modal-reabastecer)           -->
+  <!-- ======================================================== -->
+  <div id="modal-reabastecer" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-md w-full rounded-2xl p-6 space-y-5 border border-slate-700 shadow-xl">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div class="flex items-center gap-2">
+          <div class="w-7 h-7 rounded-lg bg-slate-800 border border-slate-700 flex items-center justify-center text-cyan-400">
+            <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"/>
+              <path d="m3.3 7 8.7 5 8.7-5"/>
+              <path d="M12 22V12"/>
+            </svg>
+          </div>
+          <h3 class="font-display font-bold text-base text-white">Reabastecer Unidades</h3>
+        </div>
+        <button id="btn-close-reabastecer" class="text-slate-400 hover:text-white text-base cursor-pointer" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <div class="space-y-4 text-xs font-sans">
+        
+        <!-- Target Product Info -->
+        <div class="p-3 bg-slate-900/80 rounded-xl border border-slate-800 flex items-center gap-3">
+          <div id="restock-product-icon" class="w-10 h-10 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0"></div>
+          <div class="overflow-hidden">
+            <h4 id="restock-product-name" class="font-bold text-sm text-slate-100 truncate">Nombre del Producto</h4>
+            <div class="flex items-center gap-2 text-[11px] font-mono text-slate-400 mt-0.5">
+              <span>SKU: <strong id="restock-product-sku">---</strong></span>
+              <span>•</span>
+              <span>Stock actual: <strong id="restock-current-stock" class="text-cyan-400">0 uds</strong></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Sección para Producto Físico -->
+        <div id="reabastecer-seccion-fisico" class="space-y-4">
+          <div>
+            <label for="reabastecer-cantidad" class="block font-gamer uppercase text-xs font-bold text-slate-300 mb-1.5">
+              Cantidad de Unidades a Añadir:
+            </label>
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="adjustRestockInput(-5)" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono font-bold cursor-pointer">-5</button>
+              <button type="button" onclick="adjustRestockInput(-1)" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono font-bold cursor-pointer">-1</button>
+              <input 
+                type="number" 
+                id="reabastecer-cantidad" 
+                value="5" 
+                min="1" 
+                max="500"
+                class="vault-input flex-1 py-2 px-3 rounded-xl text-center font-mono font-bold text-base text-emerald-400 outline-none border border-slate-700"
+              >
+              <button type="button" onclick="adjustRestockInput(1)" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono font-bold cursor-pointer">+1</button>
+              <button type="button" onclick="adjustRestockInput(5)" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono font-bold cursor-pointer">+5</button>
+              <button type="button" onclick="adjustRestockInput(10)" class="px-3 py-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 font-mono font-bold cursor-pointer">+10</button>
+            </div>
+          </div>
+
+          <!-- Calculation preview -->
+          <div class="p-3 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-between font-mono text-xs">
+            <span class="text-slate-300">Nuevo Stock Resultante:</span>
+            <span id="restock-new-total" class="font-bold text-sm text-emerald-400">0 unidades</span>
+          </div>
+        </div>
+
+
+        <!-- Actions -->
+        <div class="flex gap-2.5 pt-2">
+          <button 
+            type="button" 
+            id="btn-cancel-reabastecer"
+            class="flex-1 py-2.5 px-4 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer"
+          >
+            Cancelar
+          </button>
+          <button 
+            type="button" 
+            id="btn-confirm-reabastecer"
+            class="flex-1 py-2.5 px-4 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-white bg-emerald-600 hover:bg-emerald-500 transition-colors shadow-sm cursor-pointer"
+          >
+            Confirmar Ingreso
+          </button>
+        </div>
+
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 2: EDITAR PRODUCTO (#modal-editar-producto)         -->
+  <!-- ======================================================== -->
+  <div id="modal-editar-producto" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-slate-700 shadow-xl">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-display font-bold text-base text-white flex items-center gap-2">
+          <i class="fa-solid fa-pen-to-square text-purple-400 text-sm"></i>
+          <span>Editar Producto del Inventario</span>
+        </h3>
+        <button id="btn-close-editar" type="button" class="text-slate-400 hover:text-white text-base cursor-pointer" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="form-editar-producto" class="space-y-3 text-xs">
+        <input type="hidden" id="editar-id" value="">
+        
+        <div>
+          <label for="editar-nombre" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Nombre del Juego / Artículo</label>
+          <input type="text" id="editar-nombre" required placeholder="ej. Final Fantasy VII Rebirth" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="editar-categoria" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Categoría</label>
+            <select id="editar-categoria" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 bg-slate-900 outline-none">
+              <option value="games">Videojuegos</option>
+              <option value="consoles">Consolas</option>
+              <option value="accessories">Accesorios</option>
+              <option value="merch">Coleccionables</option>
+              <option value="pines">Pines Digitales</option>
+              <option value="preventa">Preventa</option>
+            </select>
+          </div>
+          <div>
+            <label for="editar-plataforma" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Plataforma</label>
+            <input type="text" id="editar-plataforma" required placeholder="ej. PS5, Switch, Xbox" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="editar-tipo" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Tipo de Producto / Modalidad</label>
+            <select id="editar-tipo" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 bg-slate-900 outline-none">
+              <option value="regular">Disponible / En Stock</option>
+              <option value="preventa">Preventa</option>
+            </select>
+          </div>
+          <div>
+            <label for="editar-fecha-estreno" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Fecha de Lanzamiento</label>
+            <input type="date" id="editar-fecha-estreno" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label for="editar-sku" class="block font-gamer uppercase font-bold text-slate-300 mb-1">SKU / Código</label>
+            <input type="text" id="editar-sku" required placeholder="ej. FF7-PS5-01" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none uppercase font-mono">
+          </div>
+          <div>
+            <label for="editar-precio" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Precio ($)</label>
+            <input type="number" id="editar-precio" step="0.01" min="0" required placeholder="69.99" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 outline-none font-mono">
+          </div>
+          <div>
+            <label for="editar-stock" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Stock</label>
+            <input type="number" id="editar-stock" min="0" required placeholder="10" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 outline-none font-mono">
+          </div>
+        </div>
+
+
+        <div class="flex gap-2.5 pt-3">
+          <button type="button" id="btn-cancel-editar" class="flex-1 py-2.5 px-4 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-submit-editar" class="flex-1 py-2.5 px-4 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm cursor-pointer">
+            Actualizar Producto
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- ======================================================== -->
+  <!-- MODAL 2: REGISTRAR NUEVO PRODUCTO EN INVENTARIO          -->
+  <!-- ======================================================== -->
+  <div id="create-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-sm hidden items-center justify-center p-4">
+    <div class="glass-panel max-w-lg w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-slate-700 shadow-xl">
+      
+      <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+        <h3 class="font-display font-bold text-base text-white flex items-center gap-2">
+          <span id="modal-product-title">Alta de Nuevo Producto al Inventario</span>
+        </h3>
+        <button id="btn-close-create" class="text-slate-400 hover:text-white text-base cursor-pointer" aria-label="Cerrar"><i class="fa-solid fa-xmark"></i></button>
+      </div>
+
+      <form id="create-product-form" class="space-y-3 text-xs">
+        <input type="hidden" id="edit-product-id" value="">
+        
+        <div>
+          <label for="new-product-name" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Nombre del Juego / Artículo</label>
+          <input type="text" id="new-product-name" required placeholder="ej. Final Fantasy VII Rebirth" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none">
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="new-product-category" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Categoría</label>
+            <select id="new-product-category" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 bg-slate-900 outline-none">
+              <option value="games">Videojuegos</option>
+              <option value="consoles">Consolas</option>
+              <option value="accessories">Accesorios</option>
+              <option value="merch">Coleccionables</option>
+              <option value="preventa">Preventa</option>
+            </select>
+          </div>
+          <div>
+            <label for="new-product-platform" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Plataforma</label>
+            <input type="text" id="new-product-platform" required placeholder="ej. PS5, Switch, Xbox" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label for="new-product-status" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Estado / Modalidad</label>
+            <select id="new-product-status" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 bg-slate-900 outline-none">
+              <option value="regular">Disponible / En Stock</option>
+              <option value="preventa">Preventa</option>
+            </select>
+          </div>
+          <div id="release-date-container">
+            <label for="new-product-release-date" class="block font-gamer uppercase font-bold text-slate-300 mb-1 flex items-center justify-between">
+              <span>Fecha de Lanzamiento / Estreno</span>
+              <span id="release-date-required-tag" class="text-[10px] text-purple-400 font-mono hidden">(Obligatorio *)</span>
+            </label>
+            <input type="date" id="new-product-release-date" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label for="new-product-sku" class="block font-gamer uppercase font-bold text-slate-300 mb-1">SKU / Código</label>
+            <input type="text" id="new-product-sku" required placeholder="ej. FF7-PS5-01" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 placeholder-slate-500 outline-none uppercase font-mono">
+          </div>
+          <div>
+            <label for="new-product-price" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Precio ($)</label>
+            <input type="number" id="new-product-price" step="0.01" min="1" required placeholder="69.99" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 outline-none font-mono">
+          </div>
+          <div>
+            <label for="new-product-stock" class="block font-gamer uppercase font-bold text-slate-300 mb-1">Stock Inicial</label>
+            <input type="number" id="new-product-stock" min="0" required placeholder="10" class="vault-input w-full px-3 py-2 rounded-xl text-slate-100 outline-none font-mono">
+          </div>
+        </div>
+
+        <div class="flex gap-2.5 pt-3">
+          <button type="button" id="btn-cancel-create" class="flex-1 py-2.5 px-4 rounded-xl font-display font-semibold text-xs tracking-wider uppercase text-slate-300 bg-slate-800 hover:bg-slate-700 transition-colors cursor-pointer">
+            Cancelar
+          </button>
+          <button type="submit" id="btn-submit-create" class="flex-1 py-2.5 px-4 rounded-xl font-display font-bold text-xs tracking-wider uppercase text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm cursor-pointer">
+            Guardar en Inventario
+          </button>
+        </div>
+
+      </form>
+
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div id="inv-toast" class="fixed bottom-6 right-6 z-50 hidden items-center gap-3 px-4 py-3 rounded-xl border backdrop-blur-md shadow-2xl text-xs sm:text-sm font-medium transition-all duration-300">
+    <span id="inv-toast-msg"></span>
+  </div>
+
+  <!-- Footer -->
+  <footer class="w-full border-t border-slate-900 bg-[#060911]/90 py-3 px-6 text-center text-xs text-slate-500">
+    <div class="max-w-[1750px] mx-auto flex flex-col sm:flex-row items-center justify-between gap-2">
+      <span class="font-mono text-slate-400">GameVault Warehouse Management System • Módulo de Inventario v1.0</span>
+      <span class="font-mono text-purple-400/80 text-[11px]">Nivel de Autorización: Master Admin</span>
+    </div>
+  </footer>
+
+  <!-- Inventory JavaScript -->
+  <script src="js/inventario.js"></script>
+
+</body>
+</html>

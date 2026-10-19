@@ -1,0 +1,297 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Orbitron:wght@400;600;700;800;900&family=Rajdhani:wght@500;600;700&display=swap');
+
+/* Local Inter Font (Google Fonts Downloaded) */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/Inter-Variable.woff2') format('woff2-variations'),
+       url('../fonts/Inter-Variable.woff2') format('woff2'),
+       url('../fonts/Inter-Variable.ttf') format('truetype');
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('../fonts/Inter-Variable-Ext.woff2') format('woff2-variations'),
+       url('../fonts/Inter-Variable-Ext.woff2') format('woff2');
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+/* Base Glow & Animations */
+:root {
+  --primary-glow: rgba(99, 102, 241, 0.4);
+  --cyan-glow: rgba(6, 182, 212, 0.4);
+  --neon-glow: rgba(16, 185, 129, 0.4);
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background-color: #060911;
+  color: #e2e8f0;
+  overflow-x: hidden;
+}
+
+.font-gamer {
+  font-family: 'Rajdhani', sans-serif;
+}
+
+.font-display {
+  font-family: 'Orbitron', sans-serif;
+}
+
+/* Cyber Grid Background */
+.cyber-grid {
+  background-size: 40px 40px;
+  background-image: 
+    linear-gradient(to right, rgba(99, 102, 241, 0.05) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(99, 102, 241, 0.05) 1px, transparent 1px);
+}
+
+/* Ambient lighting */
+.ambient-glow {
+  background: #060911;
+}
+
+/* Glassmorphism / Clean Card Panel */
+.glass-panel {
+  background: #0b1120;
+  border: 1px solid #1e293b;
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.4);
+}
+
+.glass-panel-glow {
+  position: relative;
+  border-color: #334155;
+}
+
+/* Clean Accent Utilities */
+.glow-primary {
+  box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2);
+}
+
+.glow-cyan {
+  box-shadow: 0 2px 8px rgba(6, 182, 212, 0.2);
+}
+
+.glow-emerald {
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
+}
+
+.glow-text-cyan {
+  color: #38bdf8;
+}
+
+.glow-text-purple {
+  color: #c084fc;
+}
+
+/* Scanline effect */
+.scanlines {
+  position: relative;
+  overflow: hidden;
+}
+
+.scanlines::after {
+  content: " ";
+  display: block;
+  position: absolute;
+  top: 0; left: 0; bottom: 0; right: 0;
+  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%);
+  background-size: 100% 4px;
+  z-index: 20;
+  pointer-events: none;
+  opacity: 0.6;
+}
+
+/* Custom animated floating */
+@keyframes float-slow {
+  0%, 100% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-10px) rotate(1deg); }
+}
+
+@keyframes pulse-subtle {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.animate-float {
+  animation: float-slow 6s ease-in-out infinite;
+}
+
+.animate-pulse-subtle {
+  animation: pulse-subtle 3s infinite;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #080c14;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #312e81;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #4f46e5;
+}
+
+/* Input Styles */
+.vault-input {
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: all 0.25s ease;
+}
+
+.vault-input:focus {
+  background: rgba(15, 23, 42, 0.9);
+  border-color: #6366f1;
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.25), 0 0 15px rgba(99, 102, 241, 0.2);
+}
+
+/* Shake Animation for Invalid Key */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20%, 60% { transform: translateX(-6px); }
+  40%, 80% { transform: translateX(6px); }
+}
+
+.shake {
+  animation: shake 0.4s ease-in-out;
+}
+
+/* Tab Switcher Styles */
+.tab-active {
+  background: #1e293b;
+  border: 1px solid #6366f1;
+  color: #ffffff;
+}
+
+.tab-inactive {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+}
+
+.tab-inactive:hover {
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* Toast Container Base */
+#toast-notification {
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Estilos de impresión para Ticket POS y Corte de Caja */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  
+  /* Impresión de Corte de Caja / Arqueo de Turno */
+  body.printing-corte #corte-caja-modal, 
+  body.printing-corte #corte-caja-modal * {
+    visibility: visible !important;
+  }
+  body.printing-corte #corte-caja-modal {
+    position: absolute !important;
+    left: 0 !important;
+    top: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 20px !important;
+    background: #ffffff !important;
+    color: #000000 !important;
+    display: block !important;
+  }
+  body.printing-corte #corte-caja-modal .glass-panel {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 2px solid #000000 !important;
+    box-shadow: none !important;
+    padding: 20px !important;
+    max-width: 700px !important;
+    margin: 0 auto !important;
+  }
+  body.printing-corte #corte-caja-modal button,
+  body.printing-corte #corte-caja-modal #btn-close-corte,
+  body.printing-corte #corte-caja-modal .no-print {
+    display: none !important;
+  }
+  body.printing-corte #corte-caja-modal span,
+  body.printing-corte #corte-caja-modal p,
+  body.printing-corte #corte-caja-modal h3,
+  body.printing-corte #corte-caja-modal h4,
+  body.printing-corte #corte-caja-modal label,
+  body.printing-corte #corte-caja-modal div {
+    color: #000000 !important;
+    text-shadow: none !important;
+  }
+  body.printing-corte #corte-caja-modal input,
+  body.printing-corte #corte-caja-modal textarea {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+  }
+
+  /* Impresión estándar de Ticket POS (Receipt) */
+  body:not(.printing-corte) #receipt-modal, 
+  body:not(.printing-corte) #receipt-modal * {
+    visibility: visible !important;
+  }
+  body:not(.printing-corte) #receipt-modal {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: transparent !important;
+  }
+  body:not(.printing-corte) #receipt-modal .glass-panel {
+    background: #ffffff !important;
+    color: #000000 !important;
+    border: 1px solid #000000 !important;
+    box-shadow: none !important;
+    margin: 0 auto;
+  }
+  body:not(.printing-corte) #receipt-modal button {
+    display: none !important;
+  }
+  body:not(.printing-corte) #receipt-modal span, 
+  body:not(.printing-corte) #receipt-modal p, 
+  body:not(.printing-corte) #receipt-modal h3, 
+  body:not(.printing-corte) #receipt-modal div {
+    color: #000000 !important;
+    text-shadow: none !important;
+  }
+  body:not(.printing-corte) #receipt-delivery-date-row {
+    border: 1px dashed #000000 !important;
+    background: #f3f4f6 !important;
+  }
+  body:not(.printing-corte) .receipt-pin-highlight {
+    border: 2px dashed #000000 !important;
+    background: #f1f5f9 !important;
+    padding: 8px !important;
+    margin-top: 6px !important;
+  }
+  body:not(.printing-corte) .receipt-pin-code {
+    font-size: 14px !important;
+    font-weight: 900 !important;
+    letter-spacing: 2px !important;
+    color: #000000 !important;
+  }
+}
+
