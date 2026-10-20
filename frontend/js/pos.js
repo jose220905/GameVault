@@ -37,15 +37,17 @@ async function apiFetch(endpoint, opciones = {}) {
     }
   }
 
+  // skipAuthRedirect: un 401 por PIN incorrecto no debe cerrar la sesión de caja
+  const { skipAuthRedirect, ...restOpciones } = opciones;
   const fetchOptions = {
-    ...opciones,
+    ...restOpciones,
     method,
     headers
   };
 
   const response = await fetch(url, fetchOptions);
 
-  if (response.status === 401) {
+  if (response.status === 401 && !skipAuthRedirect) {
     localStorage.removeItem('token');
     localStorage.removeItem('gamevault_active_user');
     const path = window.location.pathname.toLowerCase();
@@ -303,8 +305,18 @@ function getLocalPreventas() {
 
 function saveLocalPreventa(preventaData) {
   const preventas = getLocalPreventas();
+  const ultimoFolio = preventas.reduce((max, p) => {
+    const n = parseInt(String(p.folio || '').replace(/\D/g, ''), 10);
+    return isNaN(n) ? max : Math.max(max, n);
+  }, 0);
+  const anticipoLocal = parseFloat(preventaData.montoAnticipo) || 0;
+  const precioLocal = parseFloat(preventaData.productPrice) || 0;
   const newPrev = {
-    id: 'prev_' + Date.now(),
+    id: 'prev_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+    folio: `PREV-${String(ultimoFolio + 1).padStart(4, '0')}`,
+    anticipoPagado: anticipoLocal,
+    saldoPendiente: Math.max(0, precioLocal - anticipoLocal),
+    saldoRestante: Math.max(0, precioLocal - anticipoLocal),
     date: new Date().toISOString().split('T')[0],
     idCliente: preventaData.idCliente,
     clientName: preventaData.clientName || 'Cliente',
@@ -515,7 +527,8 @@ async function apiGetProductos() {
             isPin: Boolean(p.esDigital || catSlug === 'pines'),
             isPreventa: Boolean(p.isPreventa || (p.codigo && p.codigo.includes('PRE'))),
             status: p.status || (p.isPreventa ? 'preventa' : 'regular'),
-            releaseDate: p.releaseDate || (p.codigo === 'GTA6-PRE-05' ? '2026-11-20' : '')
+            releaseDate: p.releaseDate || (p.codigo === 'GTA6-PRE-05' ? '2026-11-20' : ''),
+            createdAt: p.createdAt || p.fechaCreacion || p.fechaAlta || p.created_at || null
           };
         });
       }
@@ -672,28 +685,7 @@ async function apiPostCajaCierre(cierreData) {
 }
 
 async function apiPostVenta(ventaData) {
-  // Asignación atómica de códigos PIN disponibles para cada unidad de PIN vendida
   const assignedPins = [];
-  
-  if (Array.isArray(ventaData.items)) {
-    ventaData.items.forEach(item => {
-      const isPinItem = item.isPin || item.category === 'pines' || DEFAULT_PIN_PRODUCTS.some(p => p.id === item.id);
-      if (isPinItem) {
-        for (let q = 0; q < item.qty; q++) {
-          const pinRecord = allocatePinAtomically(item.id, ventaData.id, ventaData.ticketNumber);
-          const pinProduct = DEFAULT_PIN_PRODUCTS.find(p => p.id === item.id) || CATALOG.find(p => p.id === item.id);
-          assignedPins.push({
-            pinId: pinRecord.id,
-            productId: item.id,
-            productName: item.name,
-            platform: item.platform || pinProduct?.platform || 'Digital',
-            montoSaldo: item.montoSaldo || pinProduct?.montoSaldo || '',
-            code: pinRecord.code
-          });
-        }
-      }
-    });
-  }
 
   const enrichedVentaData = {
     ...ventaData,
@@ -728,21 +720,26 @@ async function apiPostVenta(ventaData) {
     }
 
     const itemsPayload = (ventaData.items || []).map(item => {
-      let prodId = Number(item.productoId || item.id);
-      if (isNaN(prodId) || prodId <= 0) {
-        const cat = CATALOG.find(c => c.id === item.id || c.sku === item.sku || c.codigo === item.sku || c.name === item.name);
-        prodId = (cat && !isNaN(Number(cat.id))) ? Number(cat.id) : 1;
-      }
+      const prodId = Number(item.productoId || item.originalProductId || item.id);
       return {
-        productoId: Number(prodId),
-        id: Number(prodId),
-        cantidad: Number(item.cantidad || item.qty || 1),
-        precioUnitario: Number(item.precioUnitario !== undefined ? item.precioUnitario : (item.price || item.precio || 0)),
+        productoId: prodId,
+        id: prodId,
+        cantidad: Number(item.cantidad || item.qty),
+        precioUnitario: Number(item.precioUnitario ?? item.precio ?? item.price),
         esDigital: Boolean(item.esDigital || item.isPin || item.category === 'pines'),
         categoria: item.categoria || item.category || 'pines',
         esPreventa: Boolean(item.esPreventa || item.isPreventa || item.isPreventaDeposit || ventaData.isPreventaDepositSale)
       };
     });
+
+    const itemInvalido = itemsPayload.find(i =>
+      !Number.isFinite(i.productoId) || i.productoId <= 0 ||
+      !Number.isFinite(i.cantidad) || i.cantidad <= 0 ||
+      !Number.isFinite(i.precioUnitario)
+    );
+    if (itemsPayload.length === 0 || itemInvalido) {
+      throw new Error(`Items inválidos para POST /api/ventas: ${JSON.stringify(itemInvalido || [])}`);
+    }
 
     const montoDescuento = Number(ventaData.descuento !== undefined ? ventaData.descuento : (ventaData.descuentoCliente || 0));
     const subtotalVal = Number(ventaData.subtotal || 0);
@@ -796,13 +793,45 @@ async function apiPostVenta(ventaData) {
   return enrichedVentaData;
 }
 
-// Carrito de ventas (inicia vacío o con muestra básica)
-let cart = [
-  { id: 'a_dualsense', name: 'PlayStation 5 DualSense Wireless Controller', category: 'accessories', platform: 'PS5', sku: 'SSXS8B0600000', price: 69.99, qty: 1 },
-  { id: 'g_zelda', name: 'The Legend of Zelda: Tears of the Kingdom', category: 'games', platform: 'Switch', sku: 'S645507000000', price: 69.99, qty: 1 }
-];
+// Carrito de ventas (siempre inicia vacío al cargar o refrescar)
+let cart = [];
 
 let selectedCategory = 'all';
+
+// Categoría DESCUENTOS: productos con 30+ días desde su alta reciben 25% de descuento
+const DESCUENTO_DIAS_MINIMOS = 30;
+const DESCUENTO_PORCENTAJE = 0.25;
+
+function getProductCreatedAt(item) {
+  const raw = item && (item.createdAt || item.fechaCreacion || item.fechaAlta || item.created_at);
+  if (!raw) return null;
+  const date = new Date(raw);
+  return isNaN(date.getTime()) ? null : date;
+}
+
+function isDescuentoProduct(item) {
+  if (!item || item.isPreventa || item.status === 'preventa' || item.category === 'preventa') return false;
+  const created = getProductCreatedAt(item);
+  if (!created) return false;
+  const diasAntiguedad = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
+  return diasAntiguedad >= DESCUENTO_DIAS_MINIMOS;
+}
+
+// Preventas: se cobra el 50% de anticipo por unidad
+const PREVENTA_ANTICIPO_PORCENTAJE = 0.5;
+const MSG_PREVENTA_CLIENTE_OBLIGATORIO = 'Para registrar una preventa es obligatorio seleccionar o registrar un cliente con nombre y teléfono.';
+
+function isPreventaProduct(item) {
+  if (!item || item.isPreventaLiquidation) return false;
+  if (item.isPreventa || item.esPreventa || item.status === 'preventa') return true;
+  const cat = String(item.categoria || item.category || '').toLowerCase();
+  if (cat === 'preventa' || cat === 'preventas') return true;
+  // Con fecha de lanzamiento vigente (hoy o futura); un título ya lanzado no es preventa
+  const fecha = item.fechaLanzamiento || item.releaseDate;
+  if (!fecha) return false;
+  const lanzamiento = new Date(`${String(fecha).split('T')[0]}T23:59:59`);
+  return !isNaN(lanzamiento.getTime()) && lanzamiento.getTime() >= Date.now();
+}
 let searchQuery = '';
 let selectedPaymentMethod = 'cash'; // 'cash' | 'card' | 'transfer'
 let currentDiscount = 0; // Descuento manual o cupón
@@ -890,6 +919,34 @@ function isCurrentUserAdmin() {
   }
 }
 
+const EMPLEADO_TURNO_KEY = 'gamevault_empleado_turno_original';
+
+function isAdminRole(user) {
+  const role = String((user && (user.role || user.rol)) || '').toLowerCase();
+  return role === 'admin' || role === 'administrador';
+}
+
+// Empleado que abrió la sesión de caja (con respaldo de la clave anterior)
+function getEmpleadoTurnoOriginal() {
+  for (const key of [EMPLEADO_TURNO_KEY, 'gamevault_original_employee']) {
+    try {
+      const parsed = JSON.parse(localStorage.getItem(key) || 'null');
+      if (parsed && !isAdminRole(parsed)) return parsed;
+    } catch (e) {}
+  }
+  return { id: 2, fullname: 'José Cabrales', username: 'empleado', role: 'empleado' };
+}
+
+// Cuentas con rol ADMINISTRADOR disponibles para supervisión
+function getAdminAccounts() {
+  let users = [];
+  try { users = JSON.parse(localStorage.getItem('gamevault_users') || '[]'); } catch (e) {}
+  const admins = (Array.isArray(users) ? users : []).filter(isAdminRole);
+  return admins.length > 0
+    ? admins
+    : [{ id: 1, fullname: 'Administrador GameVault', username: 'admin', role: 'admin' }];
+}
+
 function loadActiveUser() {
   const cashierNameEl = document.getElementById('pos-cashier-name');
   const cashierRoleEl = document.getElementById('pos-cashier-role');
@@ -920,11 +977,11 @@ function loadActiveUser() {
   }
   window.usuarioActual = activeUser;
 
-  // Si el usuario actual es empleado, respaldarlo como el empleado original para cuando regrese de admin
-  const currentRole = (activeUser.role || '').toLowerCase();
-  if (currentRole !== 'admin' && currentRole !== 'administrador') {
-    localStorage.setItem('gamevault_original_employee', JSON.stringify(activeUser));
+  // El empleado activo es quien abrió el turno de caja; se respalda para regresar desde modo supervisión
+  if (!isAdminRole(activeUser)) {
+    localStorage.setItem(EMPLEADO_TURNO_KEY, JSON.stringify(activeUser));
   }
+  window.empleadoTurnoOriginal = getEmpleadoTurnoOriginal();
 
   const cleanFullname = (activeUser.fullname || activeUser.nombreCompleto || '').replace(/\s*\(\s*admin vault\s*\)/i, '').trim();
   if (cashierNameEl) cashierNameEl.textContent = cleanFullname;
@@ -1044,6 +1101,8 @@ function setupRoleSwitchModal() {
   const modal = document.getElementById('role-switch-modal');
   const form = document.getElementById('role-switch-form');
   const pinInput = document.getElementById('role-switch-pin');
+  const pinGroup = document.getElementById('role-switch-pin-group');
+  const accountList = document.getElementById('role-switch-account-list');
   const titleEl = document.getElementById('role-switch-title');
   const subtitleEl = document.getElementById('role-switch-subtitle');
   const labelEl = document.getElementById('role-switch-label');
@@ -1055,39 +1114,74 @@ function setupRoleSwitchModal() {
 
   if (!cashierBadge || !modal) return;
 
-  let targetRole = 'admin'; // 'admin' o 'empleado'
+  // Flujo jerárquico: EMPLEADO -> ADMIN (supervisión) | ADMIN -> EMPLEADO del turno original.
+  // No existe ruta EMPLEADO -> EMPLEADO.
+  let targetRole = null; // 'admin' | 'empleado'
+  let targetAccount = null;
+
+  const accountName = (u) => (u && (u.fullname || u.nombreCompleto || u.username)) || 'Usuario';
+
+  const setSubmitEnabled = (enabled) => {
+    if (!btnSubmit) return;
+    btnSubmit.disabled = !enabled;
+    btnSubmit.classList.toggle('opacity-50', !enabled);
+    btnSubmit.classList.toggle('cursor-not-allowed', !enabled);
+  };
 
   const closeModal = () => {
     modal.classList.add('hidden');
     modal.classList.remove('flex');
     if (form) form.reset();
+    targetRole = null;
+    targetAccount = null;
+  };
+
+  const selectAccount = (account, button) => {
+    targetAccount = account;
+    if (accountList) {
+      accountList.querySelectorAll('button').forEach(b => b.classList.remove('border-purple-400', 'border-cyan-400', 'bg-slate-800'));
+    }
+    if (button) button.classList.add(targetRole === 'admin' ? 'border-purple-400' : 'border-cyan-400', 'bg-slate-800');
+    if (labelEl) labelEl.textContent = `Contraseña o PIN de ${accountName(account)} *`;
+    if (pinGroup) pinGroup.classList.remove('hidden');
+    setSubmitEnabled(true);
+    setTimeout(() => { if (pinInput) pinInput.focus(); }, 50);
+  };
+
+  const renderAccountButton = (account, { icon, badge, colorClass, label }) => {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'w-full flex items-center gap-2.5 px-3 py-2 rounded-xl border border-slate-700 hover:bg-slate-800 transition-colors cursor-pointer text-left';
+    btn.innerHTML = `
+      <i class="fa-solid ${icon} text-xs ${colorClass}"></i>
+      <span class="flex-1 text-xs text-slate-100 font-semibold"></span>
+      <span class="px-2 py-0.5 rounded-full text-[10px] font-mono font-bold ${badge}"></span>
+    `;
+    btn.children[1].textContent = label || accountName(account);
+    btn.children[2].textContent = targetRole === 'admin' ? 'ADMIN' : 'TURNO';
+    btn.addEventListener('click', () => selectAccount(account, btn));
+    accountList.appendChild(btn);
+    return btn;
   };
 
   const openModal = () => {
-    const savedUserJson = localStorage.getItem('gamevault_active_user');
-    let currentRole = 'empleado';
-    if (savedUserJson) {
-      try {
-        const parsed = JSON.parse(savedUserJson);
-        currentRole = (parsed.role || parsed.rol || 'empleado').toLowerCase();
-      } catch (e) {}
-    }
+    let activeUser = null;
+    try { activeUser = JSON.parse(localStorage.getItem('gamevault_active_user') || 'null'); } catch (e) {}
 
-    const isCurrentlyAdmin = currentRole === 'admin' || currentRole === 'administrador';
+    if (form) form.reset();
+    if (accountList) accountList.innerHTML = '';
+    if (pinGroup) pinGroup.classList.add('hidden');
+    targetAccount = null;
+    setSubmitEnabled(false);
 
-    if (isCurrentlyAdmin) {
-      // Regreso a Empleado Original
+    if (isAdminRole(activeUser)) {
+      // b) ADMIN: solo puede volver al turno del empleado original
       targetRole = 'empleado';
-      let originalEmployee = { fullname: 'José Cabrales', username: 'empleado' };
-      const origJson = localStorage.getItem('gamevault_original_employee');
-      if (origJson) {
-        try { originalEmployee = JSON.parse(origJson); } catch (e) {}
-      }
+      const original = getEmpleadoTurnoOriginal();
 
-      if (titleEl) titleEl.textContent = 'REGRESAR A MODO EMPLEADO';
-      if (subtitleEl) subtitleEl.textContent = `Restaurar sesión: ${originalEmployee.fullname || 'José Cabrales'}`;
-      if (labelEl) labelEl.textContent = `Contraseña o PIN de ${originalEmployee.fullname || 'José Cabrales'} *`;
-      if (hintEl) hintEl.textContent = 'Ingresa el PIN (ej. 123 o 1234) o contraseña para restaurar tu sesión.';
+      if (titleEl) titleEl.textContent = 'FINALIZAR SUPERVISIÓN';
+      if (subtitleEl) subtitleEl.textContent = 'Regresar a la caja normal';
+      if (hintEl) hintEl.textContent = 'El empleado del turno debe ingresar su contraseña o PIN.';
       if (iconEl) {
         iconEl.className = 'w-8 h-8 rounded-lg bg-cyan-950/80 border border-cyan-500/40 flex items-center justify-center text-cyan-400';
         iconEl.innerHTML = '<i class="fa-solid fa-user-check text-xs"></i>';
@@ -1095,13 +1189,23 @@ function setupRoleSwitchModal() {
       if (btnSubmit) {
         btnSubmit.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs text-white bg-cyan-600 hover:bg-cyan-500 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
       }
+
+      if (accountList) {
+        const btn = renderAccountButton(original, {
+          icon: 'fa-rotate-left',
+          colorClass: 'text-cyan-400',
+          badge: 'bg-cyan-500/10 border border-cyan-500/30 text-cyan-300',
+          label: `Volver al turno de ${accountName(original)}`
+        });
+        selectAccount(original, btn);
+      }
     } else {
-      // Cambio a Administrador
+      // a) EMPLEADO: solo lista cuentas ADMINISTRADOR (nunca otros empleados)
       targetRole = 'admin';
-      if (titleEl) titleEl.textContent = 'AUTORIZACIÓN DE ADMINISTRADOR';
-      if (subtitleEl) subtitleEl.textContent = 'Acceso a herramientas avanzadas y corte de caja';
-      if (labelEl) labelEl.textContent = 'Contraseña o PIN de Administrador *';
-      if (hintEl) hintEl.textContent = 'Ingresa la contraseña de cuenta administrativa o clave maestra (ej. 1234).';
+
+      if (titleEl) titleEl.textContent = 'MODO SUPERVISIÓN';
+      if (subtitleEl) subtitleEl.textContent = 'Selecciona la cuenta de Administrador';
+      if (hintEl) hintEl.textContent = 'Ingresa la contraseña o PIN de la cuenta administrativa seleccionada.';
       if (iconEl) {
         iconEl.className = 'w-8 h-8 rounded-lg bg-purple-950/80 border border-purple-500/40 flex items-center justify-center text-purple-400';
         iconEl.innerHTML = '<i class="fa-solid fa-shield-halved text-xs"></i>';
@@ -1109,13 +1213,45 @@ function setupRoleSwitchModal() {
       if (btnSubmit) {
         btnSubmit.className = 'flex-1 py-2 px-3 rounded-xl font-bold text-xs text-white bg-purple-600 hover:bg-purple-500 transition-colors shadow-sm cursor-pointer flex items-center justify-center gap-1.5';
       }
+
+      if (accountList) {
+        getAdminAccounts().forEach(admin => renderAccountButton(admin, {
+          icon: 'fa-user-shield',
+          colorClass: 'text-purple-400',
+          badge: 'bg-purple-500/10 border border-purple-500/30 text-purple-300'
+        }));
+      }
     }
 
+    setSubmitEnabled(Boolean(targetAccount));
     modal.classList.remove('hidden');
     modal.classList.add('flex');
-    setTimeout(() => {
-      if (pinInput) pinInput.focus();
-    }, 100);
+  };
+
+  // Verifica la credencial contra el backend; si no responde, valida localmente (fallback offline)
+  const verifyCredential = async (endpoint, body, offlineValid) => {
+    try {
+      const res = await apiFetch(endpoint, {
+        method: 'POST',
+        body: JSON.stringify(body),
+        skipAuthRedirect: true
+      });
+      let data = {};
+      try { data = await res.json(); } catch (_) {}
+      if (res.ok && data.success && data.usuario) return { ok: true, usuario: data.usuario, token: data.token };
+      if (res.status >= 500) return { ok: offlineValid, offline: true };
+      return { ok: false, error: data.error };
+    } catch (err) {
+      return { ok: offlineValid, offline: true };
+    }
+  };
+
+  const applyUser = (user, message, offline) => {
+    localStorage.setItem('gamevault_active_user', JSON.stringify(user));
+    window.usuarioActual = user;
+    showToast(offline ? `${message} (modo sin conexión)` : message, offline ? 'info' : 'success');
+    closeModal();
+    loadActiveUser();
   };
 
   cashierBadge.addEventListener('click', openModal);
@@ -1129,6 +1265,10 @@ function setupRoleSwitchModal() {
   if (form) {
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
+      if (!targetRole || !targetAccount) {
+        showToast('Selecciona una cuenta para continuar', 'error');
+        return;
+      }
       const pinValue = (pinInput ? pinInput.value : '').trim();
       if (!pinValue) {
         showToast('Por favor introduce tu contraseña o PIN', 'error');
@@ -1139,117 +1279,68 @@ function setupRoleSwitchModal() {
 
       try {
         if (targetRole === 'admin') {
-          // POST /api/auth/verify-admin
-          const res = await apiFetch('/auth/verify-admin', {
-            method: 'POST',
-            body: JSON.stringify({ password: pinValue, pin: pinValue })
-          });
+          const admin = targetAccount;
+          const offlineValid = pinValue === admin.password || pinValue === '1234' || pinValue === 'admin123';
+          const result = await verifyCredential('/auth/verify-admin', {
+            username: admin.username,
+            password: pinValue,
+            pin: pinValue
+          }, offlineValid);
 
-          if (res && res.success && res.usuario) {
-            const adminUser = {
-              id: res.usuario.id,
-              fullname: res.usuario.nombreCompleto || res.usuario.fullname || 'Administrador GameVault',
-              role: 'admin',
-              rol: 'ADMINISTRADOR',
-              username: res.usuario.username || 'admin'
-            };
-            localStorage.setItem('gamevault_active_user', JSON.stringify(adminUser));
-            if (res.token) localStorage.setItem('gamevault_auth_token', res.token);
-
-            showToast('Modo Administrador activado con éxito', 'success');
-            closeModal();
-            loadActiveUser();
-          } else {
-            // Fallback offline si el backend no responde o modo demo offline
-            if (pinValue === '1234' || pinValue === 'admin123') {
-              const adminUser = {
-                id: 1,
-                fullname: 'Administrador GameVault',
-                role: 'admin',
-                rol: 'ADMINISTRADOR',
-                username: 'admin'
-              };
-              localStorage.setItem('gamevault_active_user', JSON.stringify(adminUser));
-              showToast('Modo Administrador activado con éxito', 'success');
-              closeModal();
-              loadActiveUser();
-            } else {
-              showToast(res && res.error ? res.error : 'Contraseña o PIN de Administrador incorrecto', 'error');
-            }
+          if (!result.ok) {
+            showToast(result.error || `Contraseña o PIN de ${accountName(admin)} incorrecto`, 'error');
+            return;
           }
+
+          const srv = result.usuario;
+          if (srv && admin.username && srv.username && String(srv.username).toLowerCase() !== String(admin.username).toLowerCase()) {
+            showToast(`La credencial no corresponde a ${accountName(admin)}`, 'error');
+            return;
+          }
+          if (result.token) localStorage.setItem('gamevault_auth_token', result.token);
+
+          applyUser({
+            id: srv ? srv.id : (Number(admin.id) || 1),
+            fullname: accountName(admin),
+            role: 'admin',
+            rol: 'ADMINISTRADOR',
+            username: (srv && srv.username) || admin.username || 'admin',
+            modoSupervision: true
+          }, `Modo supervisión activado: ${accountName(admin)}`, result.offline);
         } else {
-          // targetRole === 'empleado' -> Restaurar empleado original
-          let orig = { fullname: 'José Cabrales', username: 'empleado', id: 2 };
-          const origJson = localStorage.getItem('gamevault_original_employee');
-          if (origJson) {
-            try { orig = JSON.parse(origJson); } catch (e) {}
+          // Solo se permite regresar al empleado que abrió el turno
+          const orig = getEmpleadoTurnoOriginal();
+          let localUser = null;
+          try {
+            localUser = (JSON.parse(localStorage.getItem('gamevault_users') || '[]') || [])
+              .find(u => u.username && orig.username && u.username.toLowerCase() === orig.username.toLowerCase());
+          } catch (_) {}
+          const offlineValid = pinValue === '123' || pinValue === '1234' || (localUser && pinValue === localUser.password);
+
+          const result = await verifyCredential('/auth/verify-employee', {
+            username: orig.username || 'empleado',
+            id: orig.id,
+            password: pinValue,
+            pin: pinValue
+          }, offlineValid);
+
+          if (!result.ok) {
+            showToast(result.error || `Contraseña o PIN de ${accountName(orig)} incorrecto`, 'error');
+            return;
           }
+          if (result.token) localStorage.setItem('gamevault_auth_token', result.token);
 
-          const res = await apiFetch('/auth/verify-employee', {
-            method: 'POST',
-            body: JSON.stringify({
-              username: orig.username || 'empleado',
-              id: orig.id,
-              password: pinValue,
-              pin: pinValue
-            })
-          });
-
-          if (res && res.success && res.usuario) {
-            const empUser = {
-              id: res.usuario.id || orig.id,
-              fullname: res.usuario.nombreCompleto || orig.fullname || 'José Cabrales',
-              role: 'empleado',
-              rol: 'EMPLEADO',
-              username: res.usuario.username || orig.username || 'empleado'
-            };
-            localStorage.setItem('gamevault_active_user', JSON.stringify(empUser));
-            localStorage.setItem('gamevault_original_employee', JSON.stringify(empUser));
-            if (res.token) localStorage.setItem('gamevault_auth_token', res.token);
-
-            showToast(`Sesión de ${empUser.fullname} restaurada con éxito`, 'success');
-            closeModal();
-            loadActiveUser();
-          } else {
-            // Fallback offline si backend no responde
-            if (pinValue === '123' || pinValue === '1234') {
-              const empUser = {
-                id: orig.id || 2,
-                fullname: orig.fullname || 'José Cabrales',
-                role: 'empleado',
-                rol: 'EMPLEADO',
-                username: orig.username || 'empleado'
-              };
-              localStorage.setItem('gamevault_active_user', JSON.stringify(empUser));
-              localStorage.setItem('gamevault_original_employee', JSON.stringify(empUser));
-              showToast(`Sesión de ${empUser.fullname} restaurada con éxito`, 'success');
-              closeModal();
-              loadActiveUser();
-            } else {
-              showToast(res && res.error ? res.error : 'Contraseña o PIN de Empleado incorrecto', 'error');
-            }
-          }
-        }
-      } catch (err) {
-        // Fallback en caso de desconexión completa
-        if (targetRole === 'admin' && (pinValue === '1234' || pinValue === 'admin123')) {
-          const adminUser = { id: 1, fullname: 'Administrador GameVault', role: 'admin', rol: 'ADMINISTRADOR', username: 'admin' };
-          localStorage.setItem('gamevault_active_user', JSON.stringify(adminUser));
-          showToast('Modo Administrador activado (modo sin conexión)', 'info');
-          closeModal();
-          loadActiveUser();
-        } else if (targetRole === 'empleado' && (pinValue === '123' || pinValue === '1234')) {
-          let orig = { fullname: 'José Cabrales', username: 'empleado', role: 'empleado' };
-          try { orig = JSON.parse(localStorage.getItem('gamevault_original_employee')) || orig; } catch (e) {}
-          localStorage.setItem('gamevault_active_user', JSON.stringify(orig));
-          showToast(`Sesión de ${orig.fullname} restaurada (modo sin conexión)`, 'info');
-          closeModal();
-          loadActiveUser();
-        } else {
-          showToast('Error al verificar credenciales', 'error');
+          const srv = result.usuario;
+          applyUser({
+            id: (srv && srv.id) || orig.id || 2,
+            fullname: (srv && srv.nombreCompleto) || accountName(orig),
+            role: 'empleado',
+            rol: 'EMPLEADO',
+            username: (srv && srv.username) || orig.username || 'empleado'
+          }, `Turno de ${accountName(orig)} restaurado`, result.offline);
         }
       } finally {
-        if (btnSubmit) btnSubmit.disabled = false;
+        if (btnSubmit && targetAccount) btnSubmit.disabled = false;
       }
     });
   }
@@ -1714,6 +1805,7 @@ function setupPreventasModule() {
         {
           id: 'prev_dep_' + prod.id,
           originalProductId: prod.id,
+          productoId: Number(prod.id || prod.productoId),
           name: prod.name || prod.nombre,
           category: prod.category || 'games',
           platform: prod.platform || 'General',
@@ -1957,6 +2049,7 @@ window.cargarPreventaACaja = async function(preventaId) {
   cart = [
     {
       id: prod.id,
+      productoId: Number(prod.id || prod.productoId),
       name: prod.name || prod.nombre,
       category: prod.category || 'games',
       platform: prod.platform || 'General',
@@ -2184,6 +2277,12 @@ async function openCorteCajaModal() {
   const adminNameEl = document.getElementById('corte-admin-name');
   if (adminNameEl) adminNameEl.textContent = uName;
 
+  const cajeroNameEl = document.getElementById('corte-cajero-name');
+  if (cajeroNameEl) {
+    const empleadoTurno = getEmpleadoTurnoOriginal();
+    cajeroNameEl.textContent = empleadoTurno.fullname || empleadoTurno.nombreCompleto || empleadoTurno.username || '--';
+  }
+
   const timestampEl = document.getElementById('corte-timestamp');
   if (timestampEl) timestampEl.textContent = new Date().toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' });
 
@@ -2265,7 +2364,6 @@ async function openCorteCajaModal() {
 function setupCorteCajaModule() {
   const corteModal = document.getElementById('corte-caja-modal');
   const btnCloseCorte = document.getElementById('btn-close-corte');
-  const btnAutoCuadrar = document.getElementById('btn-corte-auto-cuadrar');
   const realInput = document.getElementById('corte-efectivo-real');
   const btnConfirmCorte = document.getElementById('btn-confirm-corte');
   const btnPrintCorte = document.getElementById('btn-print-corte');
@@ -2275,16 +2373,6 @@ function setupCorteCajaModule() {
     btnCloseCorte.addEventListener('click', () => {
       corteModal.classList.add('hidden');
       corteModal.classList.remove('flex');
-    });
-  }
-
-  if (btnAutoCuadrar && realInput) {
-    btnAutoCuadrar.addEventListener('click', () => {
-      if (currentCorteResumen) {
-        realInput.value = Number(currentCorteResumen.efectivoEsperado).toFixed(2);
-        updateArqueoDiferencia();
-        showToast(`Monto esperado ($${Number(currentCorteResumen.efectivoEsperado).toFixed(2)}) copiado al cajón real`, 'info');
-      }
     });
   }
 
@@ -2476,8 +2564,8 @@ function renderCatalog() {
       matchesCat = true;
     } else if (selectedCategory === 'preventa') {
       matchesCat = item.category === 'preventa' || item.isPreventa || item.status === 'preventa';
-    } else if (selectedCategory === 'pines') {
-      matchesCat = item.category === 'pines' || item.isPin || item.type === 'PIN';
+    } else if (selectedCategory === 'descuentos') {
+      matchesCat = isDescuentoProduct(item);
     } else {
       matchesCat = item.category === selectedCategory;
     }
@@ -2509,24 +2597,24 @@ function renderCatalog() {
 
   grid.innerHTML = filtered.map(item => {
     const isPrev = item.isPreventa || item.status === 'preventa' || item.category === 'preventa';
-    const isPin = item.category === 'pines' || item.isPin || item.type === 'PIN';
     const formattedReleaseDate = formatDisplayDate(item.releaseDate);
-    const isOutOfStock = isPin && item.stock <= 0;
+    const isOutOfStock = !isPreventaProduct(item) && Number(item.stock) <= 0;
+    const isDescuento = isDescuentoProduct(item);
 
     return `
       <div 
         onclick="${isOutOfStock ? '' : `addItemToCart('${item.id}')`}"
-        class="p-3.5 rounded-2xl bg-slate-900/70 border ${isPin ? 'border-emerald-500/30 hover:border-emerald-400' : 'border-slate-800 hover:border-cyan-500/50'} hover:bg-slate-900/90 transition-all duration-200 ${isOutOfStock ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} group flex flex-col justify-between relative overflow-hidden select-none hover:shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:scale-[1.01]"
-        title="${isOutOfStock ? 'PIN digital agotado' : 'Clic para agregar a la venta'}"
+        class="p-3.5 rounded-2xl bg-slate-900/70 border border-slate-800 hover:border-cyan-500/50 hover:bg-slate-900/90 transition-all duration-200 ${isOutOfStock ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer'} group flex flex-col justify-between relative overflow-hidden select-none hover:shadow-[0_0_20px_rgba(6,182,212,0.15)] hover:scale-[1.01]"
+        title="${isOutOfStock ? 'Producto agotado' : 'Clic para agregar a la venta'}"
       >
         <div class="space-y-2">
           <!-- Top row: Platform & Stock -->
           <div class="flex items-center justify-between text-[10px] font-mono">
-            <span class="px-2 py-0.5 rounded-md ${isPin ? 'bg-emerald-500/10 text-emerald-300 border-emerald-500/30' : 'bg-slate-800 text-slate-300 border-slate-700'} border font-semibold uppercase">
+            <span class="px-2 py-0.5 rounded-md bg-slate-800 text-slate-300 border-slate-700 border font-semibold uppercase">
               ${item.platform}
             </span>
             <span class="text-slate-400">
-              Stock: <strong class="${item.stock > 0 ? 'text-emerald-400' : 'text-rose-400'}">${isPin ? `${item.stock} códigos` : `${item.stock} uds`}</strong>
+              Stock: <strong class="${item.stock > 0 ? 'text-emerald-400' : 'text-rose-400'}">${item.stock} uds</strong>
             </span>
           </div>
 
@@ -2541,20 +2629,12 @@ function renderCatalog() {
               </h4>
               <div class="flex items-center gap-2 mt-0.5">
                 <span class="text-[10px] font-mono text-slate-500 tracking-wider">SKU: ${item.sku}</span>
+                ${isDescuento ? `
+                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-mono font-bold bg-amber-500/10 text-amber-300 border border-amber-500/30">
+                    <i class="fa-solid fa-triangle-exclamation text-[9px]"></i> +30 Días
+                  </span>
+                ` : ''}
               </div>
-
-              <!-- Etiqueta visible de Saldo o Tiempo para Pines Digitales -->
-              ${isPin ? `
-                <div class="mt-1.5 flex items-center gap-1.5 flex-wrap">
-                  <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-mono font-bold bg-emerald-500/10 text-emerald-300 border border-emerald-500/30">
-                    <i class="fa-solid fa-credit-card text-[10px] text-emerald-400"></i>
-                    Saldo / Tiempo: ${item.montoSaldo}
-                  </span>
-                  <span class="text-[9px] font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 px-2 py-0.5 rounded-md inline-flex items-center gap-1">
-                    <i class="fa-solid fa-bolt text-[10px]"></i> PIN Digital
-                  </span>
-                </div>
-              ` : ''}
 
               <!-- Etiqueta visible con la fecha de llegada para productos en Preventa -->
               ${(isPrev || item.releaseDate) ? `
@@ -2637,14 +2717,14 @@ function renderCart() {
             <div class="overflow-hidden">
               <div class="flex items-center gap-1.5 flex-wrap">
                 <h5 class="text-xs font-semibold text-slate-100 truncate">${item.name}</h5>
-                ${(item.isPin || item.category === 'pines') ? `
-                  <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 shrink-0 inline-flex items-center gap-1">
-                    <i class="fa-solid fa-bolt text-[9px]"></i> PIN: ${item.montoSaldo || 'Digital'}
+                ${item.isDescuento25 ? `
+                  <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-300 shrink-0">
+                    -25% OFERTA
                   </span>
                 ` : ''}
                 ${item.isPreventaDeposit ? `
                   <span class="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/30 text-purple-300 shrink-0">
-                    Anticipo Preventa (50%)
+                    PREVENTA (Anticipo 50%)
                   </span>
                 ` : ''}
                 ${item.isPreventaLiquidation ? `
@@ -2654,10 +2734,11 @@ function renderCart() {
                 ` : ''}
               </div>
               <div class="flex items-center gap-2 text-[10px] font-mono text-slate-400">
+                ${(item.isDescuento25 || item.preventaDirecta) ? `<span class="text-slate-500 line-through">$${Number(item.precioOriginal).toFixed(2)}</span>` : ''}
                 <span class="text-cyan-400">$${item.price.toFixed(2)} c/u</span>
                 <span>•</span>
                 <span>${item.platform}</span>
-                ${item.fullPrice ? `<span>• (Total juego: $${item.fullPrice.toFixed(2)})</span>` : ''}
+                ${(item.fullPrice && !item.preventaDirecta) ? `<span>• (Total juego: $${item.fullPrice.toFixed(2)})</span>` : ''}
               </div>
             </div>
           </div>
@@ -2697,38 +2778,65 @@ window.agregarAlCarrito = function(productoId) {
   const stockDisponible = parseInt(producto.stock !== undefined ? producto.stock : 0);
   const isPin = Boolean(producto.isPin || producto.category === 'pines' || producto.categoria === 'Pines Digitales' || producto.esDigital);
 
-  if (stockDisponible <= 0) {
+  const esPreventa = isPreventaProduct(producto);
+
+  // Las preventas no requieren stock, pero se cobran en una venta aparte (anticipo vs. pago completo)
+  if (esPreventa && cart.some(i => !i.isPreventaDeposit)) {
+    showToast('Las preventas se cobran en una venta aparte. Finaliza o vacía la orden actual.', 'warning');
+    return;
+  }
+  if (!esPreventa && cart.some(i => i.isPreventaDeposit)) {
+    showToast('La orden actual es de preventa. Finalízala antes de agregar otros productos.', 'warning');
+    return;
+  }
+
+  if (!esPreventa && stockDisponible <= 0) {
     showToast(`Stock máximo disponible alcanzado (0 unidades)`, 'warning');
     return;
   }
 
-  // Resolver ID numérico para asegurar compatibilidad con API /ventas
-  let numericId = Number(producto.id);
-  if (isNaN(numericId) || numericId <= 0) {
-    const matchInCatalog = CATALOG.find(c => (!isNaN(Number(c.id)) && Number(c.id) > 0) && (c.sku === producto.sku || c.codigo === producto.sku || c.name === producto.name || c.nombre === producto.name));
-    if (matchInCatalog) {
-      numericId = Number(matchInCatalog.id);
-    }
-  }
+  // ID numérico explícito para API /ventas (evita envíos de null)
+  const numericId = Number(producto.id || producto.productoId);
 
-  const existing = cart.find(i => (i.id === producto.id || String(i.id) === String(producto.id)) && !i.isPreventaDeposit && !i.isPreventaLiquidation);
+  const existing = cart.find(i => (i.id === producto.id || String(i.id) === String(producto.id)) && !i.isPreventaLiquidation);
   if (existing) {
-    if (existing.qty >= stockDisponible) {
+    if (!esPreventa && existing.qty >= stockDisponible) {
       showToast(`Stock máximo disponible alcanzado (${stockDisponible} unidades)`, 'warning');
       return;
     }
     existing.qty += 1;
-    existing.productoId = !isNaN(numericId) && numericId > 0 ? numericId : Number(producto.id);
+    existing.productoId = numericId;
     existing.esDigital = Boolean(isPin || producto.esDigital);
     existing.categoria = producto.categoria || producto.category || 'pines';
   } else {
+    // Productos con 30+ días de antigüedad: 25% de descuento automático sobre el precio base
+    const precioOriginal = Number(producto.price) || 0;
+    const aplicaDescuento = !esPreventa && isDescuentoProduct(producto);
+    let precioUnitario = precioOriginal;
+    if (esPreventa) {
+      // Preventa: se cobra únicamente el 50% de anticipo por unidad
+      precioUnitario = Math.round(precioOriginal * PREVENTA_ANTICIPO_PORCENTAJE * 100) / 100;
+    } else if (aplicaDescuento) {
+      precioUnitario = Math.round(precioOriginal * (1 - DESCUENTO_PORCENTAJE) * 100) / 100;
+    }
+
     cart.push({
       ...producto,
-      productoId: !isNaN(numericId) && numericId > 0 ? numericId : Number(producto.id),
+      productoId: numericId,
       esDigital: Boolean(isPin || producto.esDigital),
       categoria: producto.categoria || producto.category || 'pines',
       isPin: isPin,
       montoSaldo: producto.montoSaldo || '',
+      price: precioUnitario,
+      precioOriginal: precioOriginal,
+      isDescuento25: aplicaDescuento,
+      ...(esPreventa ? {
+        isPreventaDeposit: true,
+        preventaDirecta: true,
+        originalProductId: producto.id,
+        fullPrice: precioOriginal,
+        releaseDate: producto.releaseDate || producto.fechaLanzamiento || ''
+      } : {}),
       qty: 1
     });
   }
@@ -2748,7 +2856,7 @@ window.updateItemQty = function(id, delta) {
     const producto = CATALOG.find(p => p.id === item.id || p.id === idNum || p.id === idStr || String(p.id) === idStr || (!isNaN(p.id) && !isNaN(idNum) && Number(p.id) === idNum));
     const stockDisponible = producto ? parseInt(producto.stock !== undefined ? producto.stock : 0) : 999;
 
-    if (delta > 0 && item.qty >= stockDisponible) {
+    if (delta > 0 && !item.preventaDirecta && item.qty >= stockDisponible) {
       showToast(`Stock máximo disponible alcanzado (${stockDisponible} unidades)`, 'warning');
       return;
     }
@@ -3059,6 +3167,12 @@ function setupEventListeners() {
       const activeClient = clienteActual || currentClient || window.clienteActual || window.currentClient;
       const isGeneral = !activeClient || activeClient.isGeneral || activeClient.id === 'publico' || !activeClient.id;
       const esClienteRegistrado = !isGeneral || Boolean(activeClient?.esClienteRegistrado);
+
+      // Toda preventa exige un cliente identificado (no Público General)
+      if (cart.some(i => i.isPreventaDeposit) && isGeneral) {
+        showToast(MSG_PREVENTA_CLIENTE_OBLIGATORIO, 'error');
+        return;
+      }
       
       const montoDescuento = esClienteRegistrado ? Math.round(subtotal * 0.05 * 100) / 100 : 0;
       const clientDiscount = montoDescuento;
@@ -3096,6 +3210,28 @@ function setupEventListeners() {
           estado: 'PENDIENTE'
         });
         showToast(`¡Anticipo cobrado! Preventa ${savedPreventaRecord.folio || `#${savedPreventaRecord.id}`} guardada oficialmente como PENDIENTE`, 'success');
+      } else if (cart.some(i => i.isPreventaDeposit && i.preventaDirecta)) {
+        // Preventas agregadas directo al carrito: una reserva por unidad (anticipo 50% / saldo 50%)
+        const registros = [];
+        for (const it of cart.filter(i => i.isPreventaDeposit && i.preventaDirecta)) {
+          for (let u = 0; u < it.qty; u++) {
+            registros.push(await apiPostPreventa({
+              idCliente: activeClient.id,
+              clientName: activeClient.name || activeClient.nombre,
+              clientPhone: activeClient.phone || activeClient.telefono || '',
+              idProducto: it.originalProductId,
+              productName: it.name,
+              productPrice: it.fullPrice,
+              montoAnticipo: it.price,
+              anticipoPagado: it.price,
+              releaseDate: it.releaseDate || '',
+              estado: 'PENDIENTE'
+            }));
+          }
+        }
+        savedPreventaRecord = registros[0] || null;
+        const folios = registros.map(r => r.folio || `#${r.id}`).join(', ');
+        showToast(`¡Anticipo cobrado! Preventa${registros.length > 1 ? 's' : ''} ${folios} guardada${registros.length > 1 ? 's' : ''} como PENDIENTE`, 'success');
       }
 
       // FASE B: Al confirmarse la liquidación del saldo restante, marcar como COMPLETADA
@@ -3118,23 +3254,15 @@ function setupEventListeners() {
         showToast(`¡Preventa #${linkedPreventaId} liquidada con éxito!`, 'success');
       }
 
-      // Validar disponibilidad de códigos PIN en inventario
-      for (const item of cart) {
-        if (item.isPin || item.category === 'pines') {
-          const avail = getAvailablePinCount(item.id);
-          if (item.qty > avail) {
-            showToast(`Inventario insuficiente de códigos para "${item.name}". Disponibles: ${avail}`, 'error');
-            return;
-          }
-        }
-      }
-
       const depositItem = cart.find(i => i.isPreventaDeposit);
       const deliveryEstDate = pendingPreventaOrder?.releaseDate || depositItem?.releaseDate || '';
-      const anticipoVal = pendingPreventaOrder ? pendingPreventaOrder.montoAnticipo : (depositItem ? depositItem.price : activePreventaCredit);
-      const restanteVal = pendingPreventaOrder 
-        ? (pendingPreventaOrder.productPrice - pendingPreventaOrder.montoAnticipo) 
-        : (depositItem ? ((depositItem.fullPrice || depositItem.price * 2) - depositItem.price) : 0);
+      const depositItems = cart.filter(i => i.isPreventaDeposit);
+      const anticipoVal = pendingPreventaOrder
+        ? pendingPreventaOrder.montoAnticipo
+        : (depositItem ? depositItems.reduce((acc, i) => acc + i.price * i.qty, 0) : activePreventaCredit);
+      const restanteVal = pendingPreventaOrder
+        ? (pendingPreventaOrder.productPrice - pendingPreventaOrder.montoAnticipo)
+        : (depositItem ? depositItems.reduce((acc, i) => acc + ((i.fullPrice || i.price * 2) - i.price) * i.qty, 0) : 0);
 
       // Construcción del objeto de venta
       const ventaData = {
@@ -3193,19 +3321,18 @@ function setupEventListeners() {
         createdAt: new Date().toISOString()
       };
 
-      // Consumir POST /api/ventas y asignar PINs atómicamente
+      // Consumir POST /api/ventas
       const saleResponse = await apiPostVenta(ventaData);
 
       // Descontar existencias del catálogo si es entrega física (Fase B o venta regular)
       if (!isPreventaDepositSale) {
         cart.forEach(cartItem => {
           const invItem = CATALOG.find(p => p.id === (cartItem.originalProductId || cartItem.id));
-          if (invItem && !invItem.isPin && invItem.category !== 'pines') {
+          if (invItem) {
             invItem.stock = Math.max(0, invItem.stock - cartItem.qty);
           }
         });
         localStorage.setItem('gamevault_inventory', JSON.stringify(CATALOG));
-        syncPinStockInCatalog();
         renderCatalog();
       }
 
@@ -3497,7 +3624,7 @@ function openReceiptModal(ventaData) {
     list.innerHTML = cart.map(item => {
       const itemRelDate = item.releaseDate || estDeliveryDate;
       const formattedRelDate = itemRelDate ? formatDisplayDate(itemRelDate) : '';
-      const isPinItem = item.isPin || item.category === 'pines' || DEFAULT_PIN_PRODUCTS.some(p => p.id === item.id);
+      const isPinItem = item.isPin || item.category === 'pines';
       const itemPins = assignedPins.filter(p => p.productId === item.id);
 
       return `

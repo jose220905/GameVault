@@ -250,11 +250,11 @@
         <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all cursor-pointer" data-category="merch">
           Coleccionables
         </button>
-        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-purple-400 hover:text-purple-200 hover:border-purple-500/50 transition-all cursor-pointer" data-category="preventa">
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all cursor-pointer" data-category="preventa">
           Preventas
         </button>
-        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-emerald-400 hover:text-emerald-200 hover:border-emerald-500/50 transition-all cursor-pointer" data-category="pines">
-          Pines Digitales
+        <button class="cat-filter-btn px-3.5 py-1.5 rounded-md text-xs font-gamer tracking-wider font-semibold uppercase border border-slate-800 bg-slate-900/80 text-slate-400 hover:text-slate-200 hover:border-slate-700 transition-all cursor-pointer" data-category="descuentos">
+          Descuentos
         </button>
       </div>
 
@@ -523,24 +523,24 @@
 
           <!-- Dynamic Cash Calculator (Shown if Cash is selected) -->
           <!-- Formato de texto: "Monto recibido: $XX.XX" sin paréntesis -->
-          <div id="cash-calculator" class="p-2.5 rounded-xl bg-slate-900/80 border border-slate-800 space-y-1.5 mt-1.5 text-xs">
-            <div class="flex items-center justify-between">
-              <span class="text-slate-400 font-mono">Monto recibido:</span>
-              <div class="relative flex items-center">
-                <span class="absolute left-2.5 text-xs font-mono font-bold text-emerald-400 pointer-events-none">$</span>
-                <input 
-                  type="number" 
-                  id="monto-recibido" 
+          <div id="cash-calculator" class="p-3 rounded-xl bg-slate-900/80 border border-slate-800 space-y-2 mt-1.5 text-xs">
+            <div class="flex items-center justify-between gap-3">
+              <label for="monto-recibido" class="text-slate-400 font-mono">Monto recibido:</label>
+              <div class="vault-input flex items-center gap-1 w-32 px-2.5 py-1 rounded-lg border border-slate-700 focus-within:border-emerald-400 transition-colors">
+                <span class="text-sm font-mono font-bold text-emerald-400 select-none">$</span>
+                <input
+                  type="number"
+                  id="monto-recibido"
                   placeholder="0.00"
                   step="any"
                   min="0"
-                  class="vault-input w-28 pl-6 pr-2.5 py-0.5 rounded text-right font-mono text-xs font-bold text-emerald-400 outline-none"
+                  class="flex-1 min-w-0 bg-transparent border-0 p-0 text-right font-mono text-sm font-bold text-emerald-400 placeholder-slate-600 outline-none focus:ring-0 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 >
               </div>
             </div>
-            <div class="flex items-center justify-between pt-1 border-t border-slate-800">
-              <span class="text-slate-400 font-mono">Cambio / Vuelto:</span>
-              <span id="cash-change" class="font-mono font-bold text-xs text-emerald-400">$0.00</span>
+            <div class="flex items-center justify-between gap-3 pt-2 border-t border-slate-800">
+              <span class="text-slate-400 font-mono">Cambio:</span>
+              <span id="cash-change" class="font-mono text-2xl font-bold text-emerald-400 leading-none tracking-tight">$0.00</span>
             </div>
           </div>
         </div>
@@ -717,12 +717,8 @@
           <div>
             <div class="flex items-center gap-2">
               <h3 class="font-display font-bold text-base sm:text-lg text-white">CORTE DE CAJA // RESUMEN DEL DÍA</h3>
-              <span class="text-[9px] font-mono font-bold px-2.5 py-0.5 rounded-full bg-amber-500/10 text-amber-300 border border-amber-500/30 uppercase tracking-wider inline-flex items-center gap-1">
-                <i class="fa-solid fa-shield text-[10px]"></i>
-                <span>Solo Admin</span>
-              </span>
             </div>
-            <p class="text-[11px] font-mono text-slate-400">Arqueo de Turno & Balance Contable • Terminal POS 01</p>
+            <p class="text-[11px] font-mono text-slate-400">Arqueo de Turno & Balance Contable • Cajero: <span id="corte-cajero-name" class="text-slate-300">--</span></p>
           </div>
         </div>
         <button id="btn-close-corte" class="text-slate-400 hover:text-white text-base p-1 rounded-lg hover:bg-slate-800 transition-colors cursor-pointer" title="Cerrar ventana" aria-label="Cerrar ventana"><i class="fa-solid fa-xmark"></i></button>
@@ -747,7 +743,7 @@
       <!-- Resumen del Día (GET /api/caja/resumen-hoy) -->
       <div class="space-y-2 text-xs font-mono">
         <div class="flex items-center justify-between text-slate-400 text-[11px] font-gamer uppercase tracking-wider px-1">
-          <span>Resumen de Cobros de la Jornada (GET /api/caja/resumen-hoy)</span>
+          <span>Resumen de Cobros de la Jornada</span>
           <span class="text-amber-400 font-bold">Terminal 01</span>
         </div>
 
@@ -811,16 +807,11 @@
           </div>
 
           <!-- 7. Efectivo Esperado en Caja -->
-          <div class="p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
-            <div>
-              <span class="text-xs font-gamer tracking-wider font-bold text-amber-300 uppercase block">
-                Efectivo Esperado en Caja:
-              </span>
-              <p class="text-[10px] text-slate-400 font-sans">
-                = (Fondo Inicial + Ventas en Efectivo)
-              </p>
-            </div>
-            <div id="corte-efectivo-esperado" class="font-display font-black text-lg sm:text-xl text-amber-400 tracking-tight">
+          <div class="p-3 rounded-xl bg-amber-950/30 border border-amber-500/40 flex items-center justify-between gap-3 shadow-[0_0_15px_rgba(245,158,11,0.1)]">
+            <span class="text-xs sm:text-sm font-gamer tracking-wider font-bold text-amber-300 uppercase leading-none">
+              Efectivo Esperado en Caja:
+            </span>
+            <div id="corte-efectivo-esperado" class="font-display font-black text-lg sm:text-xl text-amber-400 tracking-tight leading-none text-right">
               $1,825.00
             </div>
           </div>
@@ -842,14 +833,6 @@
             <label for="corte-efectivo-real" class="block text-[11px] font-bold text-slate-300 uppercase font-gamer">
               Efectivo Real en Cajón ($) *
             </label>
-            <button 
-              type="button" 
-              id="btn-corte-auto-cuadrar"
-              class="text-[10px] font-mono text-cyan-400 hover:text-cyan-300 underline cursor-pointer"
-              title="Copiar monto de efectivo esperado al conteo real"
-            >
-              Copiar Monto Esperado
-            </button>
           </div>
           <div class="relative">
             <span class="absolute left-3.5 top-2.5 text-sm font-mono font-bold text-emerald-400 pointer-events-none">$</span>
@@ -1063,7 +1046,7 @@
   <!-- MODAL: PREVENTAS Y RESERVAS                    -->
   <!-- ============================================== -->
   <div id="preventas-modal" class="fixed inset-0 z-50 bg-black/85 backdrop-blur-md hidden items-center justify-center p-4">
-    <div class="glass-panel max-w-2xl w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-purple-500/40 shadow-2xl">
+    <div class="glass-panel max-w-5xl w-full rounded-2xl p-6 sm:p-7 space-y-4 border border-purple-500/40 shadow-2xl">
       
       <!-- Modal Header -->
       <div class="flex items-center justify-between border-b border-slate-800 pb-3">
@@ -1242,7 +1225,10 @@
       </div>
 
       <form id="role-switch-form" class="space-y-3">
-        <div>
+        <!-- Lista de cuentas destino (Admins para empleado / Turno original para admin) -->
+        <div id="role-switch-account-list" class="space-y-1.5 max-h-48 overflow-y-auto"></div>
+
+        <div id="role-switch-pin-group" class="hidden">
           <label id="role-switch-label" for="role-switch-pin" class="block text-[11px] font-mono text-slate-300 mb-1">
             Contraseña o PIN de Administrador *
           </label>
